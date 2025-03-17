@@ -1,0 +1,17 @@
+{
+  "api_keys": {
+    "OpenAI": "your-openai-api-key-here",
+    "Gemini": "your-gemini-api-key-here",
+    "Deepseek": "your-deepseek-api-key-here",
+    "OpenRouter": "your-openrouter-api-key-here"
+  },
+  "endpoints": {
+    "Ollama": "http://localhost:11434",
+    "OpenAI": "https://api.openai.com/v1",
+    "Gemini": "https://generativelanguage.googleapis.com/v1",
+    "Deepseek": "https://api.deepseek.com/v1",
+    "OpenRouter": "https://openrouter.ai/api/v1"
+  },
+  "last_used_api": "Ollama",
+  "last_used_model": "llama3"
+} 
