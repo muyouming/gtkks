@@ -1,6 +1,9 @@
 #include "MainWindow.h"
 #include "ApiManager.h"
 #include "Config.h"
+#ifdef KINDLE
+#include "KindleConfig.h"
+#endif
 #include <iostream>
 #include <gtkmm/filechooserdialog.h>
 #include <gtkmm/messagedialog.h>
@@ -20,7 +23,16 @@ MainWindow::MainWindow()
     
     // Set up window
     set_title("GTKKS - GTK LLM Client");
+#ifdef KINDLE
+    // Use Kindle screen dimensions
+    set_default_size(KindleUtils::SCREEN_WIDTH, KindleUtils::SCREEN_HEIGHT);
+    // Optimize for e-ink display
+    Gdk::RGBA white;
+    white.set_rgba(1.0, 1.0, 1.0, 1.0);
+    override_background_color(white);
+#else
     set_default_size(800, 600);
+#endif
     set_border_width(0);
     
     // Set up header bar
@@ -69,6 +81,14 @@ MainWindow::MainWindow()
     chatView.set_margin_bottom(10);
     chatView.set_vexpand(true);
     
+#ifdef KINDLE
+    // Set larger font for Kindle
+    Pango::FontDescription font;
+    font.set_family("Sans");
+    font.set_size(KindleUtils::DEFAULT_FONT_SIZE * Pango::SCALE);
+    chatView.override_font(font);
+#endif
+    
     // Add widgets to main box
     mainBox.pack_start(chatView, true, true, 0);
     
@@ -113,6 +133,12 @@ MainWindow::MainWindow()
     // Show all widgets
     show_all_children();
     menuBox.show_all();
+    
+#ifdef KINDLE
+    // Initialize Kindle display
+    KindleUtils::setHighQualityRefresh();
+    KindleUtils::refreshDisplay();
+#endif
 }
 
 MainWindow::~MainWindow() {
@@ -121,6 +147,9 @@ MainWindow::~MainWindow() {
 void MainWindow::onMenuButtonClicked() {
     menuPopover.show_all();
     menuPopover.popup();
+#ifdef KINDLE
+    KindleUtils::refreshDisplay();
+#endif
 }
 
 void MainWindow::onSettingsClicked() {
@@ -133,6 +162,10 @@ void MainWindow::onSettingsClicked() {
     if (response == Gtk::RESPONSE_CLOSE) {
         updateChatView();
     }
+    
+#ifdef KINDLE
+    KindleUtils::refreshDisplay();
+#endif
 }
 
 void MainWindow::onSaveClicked() {

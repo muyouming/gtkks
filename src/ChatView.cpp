@@ -1,4 +1,7 @@
 #include "ChatView.h"
+#ifdef KINDLE
+#include "KindleConfig.h"
+#endif
 #include <iostream>
 #include <fstream>
 #include <json/json.h>
@@ -19,6 +22,20 @@ ChatView::ChatView()
     chatTextView.set_top_margin(10);
     chatTextView.set_bottom_margin(10);
     
+#ifdef KINDLE
+    // Optimize for e-ink display
+    Gdk::RGBA white;
+    white.set_rgba(1.0, 1.0, 1.0, 1.0);
+    chatTextView.override_background_color(white);
+    
+    // Set larger font for Kindle
+    Pango::FontDescription font;
+    font.set_family("Sans");
+    font.set_size(KindleUtils::DEFAULT_FONT_SIZE * Pango::SCALE);
+    chatTextView.override_font(font);
+    inputTextView.override_font(font);
+#endif
+    
     // Set up chat scrolled window
     chatScrolledWindow.set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC);
     chatScrolledWindow.add(chatTextView);
@@ -30,7 +47,11 @@ ChatView::ChatView()
     inputTextView.set_right_margin(10);
     inputTextView.set_top_margin(10);
     inputTextView.set_bottom_margin(10);
+#ifdef KINDLE
+    inputTextView.set_size_request(-1, 150); // Larger input area for Kindle
+#else
     inputTextView.set_size_request(-1, 100);
+#endif
     
     // Set up buttons
     sendButton.set_label("Send");
@@ -179,6 +200,12 @@ void ChatView::onSendClicked() {
         return;
     }
     
+#ifdef KINDLE
+    // Set fast refresh mode for typing
+    KindleUtils::setFastRefresh();
+    KindleUtils::refreshDisplay();
+#endif
+    
     // Add user message to chat
     appendUserMessage(text);
     
@@ -206,11 +233,22 @@ void ChatView::onSendClicked() {
         [this]() {
             if (progressBar.get_visible()) {
                 progressBar.pulse();
+#ifdef KINDLE
+                // Periodically refresh the display to show progress
+                static int refreshCounter = 0;
+                if (++refreshCounter % 10 == 0) {
+                    KindleUtils::refreshDisplay();
+                }
+#endif
                 return true;
             }
             return false;
         },
+#ifdef KINDLE
+        500  // Slower refresh rate for Kindle
+#else
         100
+#endif
     );
     
     // Send request to API
@@ -307,104 +345,63 @@ void ChatView::appendSystemMessage(const std::string& content) {
 }
 
 void ChatView::handleApiResponse(const std::string& response, bool isComplete) {
-    // Hide progress bar when complete
-    if (isComplete) {
-        updateProgressBar(false);
+    if (isFirstResponseChunk) {
+        // First chunk, add assistant message
+        appendAssistantMessage("");
+        
+        // Store start and end iterators for the response
+        Gtk::TextBuffer::iterator start, end;
+        chatBuffer->get_bounds(start, end);
+        responseStartIter = end;
+        responseEndIter = end;
+        
+        // Create marks for the response
+        responseStartMark = chatBuffer->create_mark("response_start", responseStartIter, true);
+        responseEndMark = chatBuffer->create_mark("response_end", responseEndIter, false);
+        
+        isFirstResponseChunk = false;
     }
     
-    if (isFirstResponseChunk && !response.empty()) {
-        // This is the first chunk of the response
-        isFirstResponseChunk = false;
-        
-        // Create tags for assistant role
-        Glib::RefPtr<Gtk::TextBuffer::Tag> roleTag = chatBuffer->create_tag();
-        roleTag->property_foreground() = "#006600";
-        roleTag->property_weight() = Pango::WEIGHT_BOLD;
-        
-        // Add newline if buffer is not empty
-        Gtk::TextBuffer::iterator iter = chatBuffer->end();
-        if (!chatBuffer->get_text().empty()) {
-            chatBuffer->insert(iter, "\n\n");
-            iter = chatBuffer->end();
-        }
-        
-        // Create a mark at the current position
-        responseStartMark = chatBuffer->create_mark("response_start", iter, true);
-        
-        // Add role prefix
-        chatBuffer->insert(iter, "assistant: ");
-        iter = chatBuffer->end();
-        
-        // Apply tag to role
-        Gtk::TextBuffer::iterator start = chatBuffer->get_iter_at_mark(responseStartMark);
-        chatBuffer->apply_tag(roleTag, start, iter);
-        
-        // Create a mark for the content start
-        Glib::RefPtr<Gtk::TextBuffer::Mark> contentStartMark = chatBuffer->create_mark("content_start", iter, true);
-        
-        // Add the first chunk of content
-        chatBuffer->insert(iter, response);
-        
-        // Create a mark for the end of the content
-        responseEndMark = chatBuffer->create_mark("response_end", chatBuffer->end(), false);
-        
-        // Update current response text
-        currentResponseText += response;
-        
-        // Clean up the content start mark
-        chatBuffer->delete_mark(contentStartMark);
-    } 
-    else if (!isFirstResponseChunk && !isComplete) {
-        // This is a continuation of the response
-        // Get the current end position
-        Gtk::TextBuffer::iterator endIter = chatBuffer->get_iter_at_mark(responseEndMark);
-        
-        // Add the new content
-        chatBuffer->insert(endIter, response);
-        
-        // Update the end mark
-        chatBuffer->move_mark(responseEndMark, chatBuffer->end());
-        
-        // Update current response text
-        currentResponseText += response;
+    // Update response text
+    currentResponseText += response;
+    
+    // Update text in buffer
+    responseStartIter = chatBuffer->get_iter_at_mark(responseStartMark);
+    responseEndIter = chatBuffer->get_iter_at_mark(responseEndMark);
+    chatBuffer->erase(responseStartIter, responseEndIter);
+    responseStartIter = chatBuffer->get_iter_at_mark(responseStartMark);
+    chatBuffer->insert(responseStartIter, currentResponseText);
+    
+    // Scroll to bottom
+    Gtk::TextBuffer::iterator iter = chatBuffer->end();
+    chatTextView.scroll_to(iter);
+    
+#ifdef KINDLE
+    // Only refresh the display when complete or periodically to avoid flickering
+    static int updateCounter = 0;
+    if (isComplete || (++updateCounter % 5 == 0)) {
+        KindleUtils::refreshDisplay();
     }
-    else if (isComplete) {
-        // This is the final chunk
-        if (isFirstResponseChunk) {
-            // If this is both the first and last chunk, just append it normally
-            appendAssistantMessage(response);
-            currentResponseText = response;
-        } 
-        else {
-            // Add the final chunk if there is any
-            if (!response.empty()) {
-                Gtk::TextBuffer::iterator endIter = chatBuffer->get_iter_at_mark(responseEndMark);
-                chatBuffer->insert(endIter, response);
-                currentResponseText += response;
-            }
-            
-            // Clean up the marks
-            chatBuffer->delete_mark(responseStartMark);
-            chatBuffer->delete_mark(responseEndMark);
-        }
-        
-        // Add the complete message to history
+#endif
+    
+    if (isComplete) {
+        // Add assistant message to history
         Message assistantMessage;
         assistantMessage.role = "assistant";
         assistantMessage.content = currentResponseText;
         messages.push_back(assistantMessage);
         
-        // Reset for next response
-        isFirstResponseChunk = true;
-        currentResponseText = "";
-    }
-    
-    // Scroll to bottom
-    chatTextView.scroll_to(chatBuffer->get_insert());
-    
-    // Enable input when complete
-    if (isComplete) {
+        // Re-enable input
         setInputSensitivity(true);
+        
+        // Hide progress bar
+        updateProgressBar(false);
+        
+#ifdef KINDLE
+        // Final refresh with high quality
+        KindleUtils::setHighQualityRefresh();
+        KindleUtils::refreshDisplay();
+#endif
     }
 }
 

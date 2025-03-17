@@ -19,6 +19,16 @@ if(APPLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
 endif()
 
+# Set compiler flags for Kindle
+if(CMAKE_SYSTEM_PROCESSOR STREQUAL "arm")
+    # Kindle-specific flags
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -march=armv7-a -mtune=cortex-a8 -mfpu=neon -mfloat-abi=softfp")
+    # Define KINDLE for conditional compilation
+    add_definitions(-DKINDLE)
+    # Add Kindle-specific include directories if needed
+    include_directories(SYSTEM "/opt/kindle-tc/arm-kindle-linux-gnueabi/sysroot/usr/include")
+endif()
+
 # Find required packages
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTKMM REQUIRED gtkmm-3.0)
@@ -76,8 +86,15 @@ target_link_libraries(gtkks
 # Install target
 install(TARGETS gtkks DESTINATION bin)
 
+# Install resources for Kindle
+if(CMAKE_SYSTEM_PROCESSOR STREQUAL "arm")
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/resources DESTINATION .)
+    install(FILES ${CMAKE_SOURCE_DIR}/kindle-install.sh DESTINATION .)
+endif()
+
 # Print configuration
 message(STATUS "C++ Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
+message(STATUS "Target System: ${CMAKE_SYSTEM_NAME} ${CMAKE_SYSTEM_PROCESSOR}")
 message(STATUS "GTKMM include dirs: ${GTKMM_INCLUDE_DIRS}")
 message(STATUS "GTKMM libraries: ${GTKMM_LIBRARIES}")
 message(STATUS "CURLPP include dirs: ${CURLPP_INCLUDE_DIRS}")
