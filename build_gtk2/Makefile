@@ -294,6 +294,30 @@ src/GeminiApi.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/gtkks.dir/build.make CMakeFiles/gtkks.dir/src/GeminiApi.cpp.s
 .PHONY : src/GeminiApi.cpp.s
 
+src/HttpClient.o: src/HttpClient.cpp.o
+.PHONY : src/HttpClient.o
+
+# target to build an object file
+src/HttpClient.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/gtkks.dir/build.make CMakeFiles/gtkks.dir/src/HttpClient.cpp.o
+.PHONY : src/HttpClient.cpp.o
+
+src/HttpClient.i: src/HttpClient.cpp.i
+.PHONY : src/HttpClient.i
+
+# target to preprocess a source file
+src/HttpClient.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/gtkks.dir/build.make CMakeFiles/gtkks.dir/src/HttpClient.cpp.i
+.PHONY : src/HttpClient.cpp.i
+
+src/HttpClient.s: src/HttpClient.cpp.s
+.PHONY : src/HttpClient.s
+
+# target to generate assembly for a file
+src/HttpClient.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/gtkks.dir/build.make CMakeFiles/gtkks.dir/src/HttpClient.cpp.s
+.PHONY : src/HttpClient.cpp.s
+
 src/LLMApi.o: src/LLMApi.cpp.o
 .PHONY : src/LLMApi.o
 
@@ -490,6 +514,9 @@ help:
 	@echo "... src/GeminiApi.o"
 	@echo "... src/GeminiApi.i"
 	@echo "... src/GeminiApi.s"
+	@echo "... src/HttpClient.o"
+	@echo "... src/HttpClient.i"
+	@echo "... src/HttpClient.s"
 	@echo "... src/LLMApi.o"
 	@echo "... src/LLMApi.i"
 	@echo "... src/LLMApi.s"

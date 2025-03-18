@@ -132,11 +132,11 @@ CMakeFiles/gtkks.dir/src/LLMApi.cpp.o: /home/debian/gtkks/src/LLMApi.cpp \
  /usr/include/c++/12/bits/algorithmfwd.h \
  /usr/include/c++/12/bits/stl_heap.h \
  /usr/include/c++/12/bits/stl_tempbuf.h \
- /usr/include/c++/12/bits/uniform_int_dist.h \
- /usr/include/jsoncpp/json/json.h /usr/include/jsoncpp/json/config.h \
- /usr/include/c++/12/cstddef /usr/include/c++/12/istream \
- /usr/include/c++/12/ios /usr/include/c++/12/exception \
- /usr/include/c++/12/bits/exception_ptr.h \
+ /usr/include/c++/12/bits/uniform_int_dist.h /usr/include/c++/12/map \
+ /usr/include/c++/12/bits/stl_tree.h /usr/include/c++/12/bits/stl_map.h \
+ /usr/include/c++/12/bits/stl_multimap.h /usr/include/c++/12/sstream \
+ /usr/include/c++/12/istream /usr/include/c++/12/ios \
+ /usr/include/c++/12/exception /usr/include/c++/12/bits/exception_ptr.h \
  /usr/include/c++/12/bits/cxxabi_init_exception.h \
  /usr/include/c++/12/bits/nested_exception.h \
  /usr/include/c++/12/bits/ios_base.h /usr/include/c++/12/ext/atomicity.h \
@@ -170,29 +170,5 @@ CMakeFiles/gtkks.dir/src/LLMApi.cpp.o: /home/debian/gtkks/src/LLMApi.cpp \
  /usr/include/c++/12/bits/locale_facets.tcc \
  /usr/include/c++/12/bits/basic_ios.tcc /usr/include/c++/12/ostream \
  /usr/include/c++/12/bits/ostream.tcc \
- /usr/include/c++/12/bits/istream.tcc /usr/include/c++/12/memory \
- /usr/include/c++/12/bits/stl_raw_storage_iter.h \
- /usr/include/c++/12/bits/align.h /usr/include/c++/12/bit \
- /usr/include/c++/12/bits/unique_ptr.h \
- /usr/include/c++/12/bits/shared_ptr.h \
- /usr/include/c++/12/bits/shared_ptr_base.h \
- /usr/include/c++/12/bits/allocated_ptr.h \
- /usr/include/c++/12/ext/concurrence.h \
- /usr/include/c++/12/bits/shared_ptr_atomic.h \
- /usr/include/c++/12/bits/atomic_base.h \
- /usr/include/c++/12/bits/atomic_lockfree_defines.h \
- /usr/include/c++/12/backward/auto_ptr.h \
- /usr/include/c++/12/pstl/glue_memory_defs.h \
- /usr/include/c++/12/pstl/execution_defs.h /usr/include/c++/12/sstream \
- /usr/include/c++/12/bits/sstream.tcc \
- /usr/include/jsoncpp/json/allocator.h /usr/include/c++/12/cstring \
- /usr/include/string.h /usr/include/strings.h \
- /usr/include/jsoncpp/json/version.h \
- /usr/include/jsoncpp/json/json_features.h \
- /usr/include/jsoncpp/json/forwards.h /usr/include/jsoncpp/json/reader.h \
- /usr/include/jsoncpp/json/value.h /usr/include/c++/12/map \
- /usr/include/c++/12/bits/stl_tree.h /usr/include/c++/12/bits/stl_map.h \
- /usr/include/c++/12/bits/stl_multimap.h /usr/include/c++/12/deque \
- /usr/include/c++/12/bits/stl_deque.h /usr/include/c++/12/bits/deque.tcc \
- /usr/include/c++/12/stack /usr/include/c++/12/bits/stl_stack.h \
- /usr/include/jsoncpp/json/writer.h
+ /usr/include/c++/12/bits/istream.tcc \
+ /usr/include/c++/12/bits/sstream.tcc

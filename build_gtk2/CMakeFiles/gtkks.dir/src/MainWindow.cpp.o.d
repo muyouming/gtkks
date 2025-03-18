@@ -1345,12 +1345,7 @@ CMakeFiles/gtkks.dir/src/MainWindow.cpp.o: \
  /usr/include/gtkmm-2.4/gtkmm/actiongroup.h \
  /usr/include/gtkmm-2.4/gtkmm/viewport.h \
  /home/debian/gtkks/include/ChatView.h \
- /home/debian/gtkks/include/LLMApi.h /usr/include/jsoncpp/json/json.h \
- /usr/include/jsoncpp/json/config.h /usr/include/jsoncpp/json/allocator.h \
- /usr/include/c++/12/cstring /usr/include/jsoncpp/json/version.h \
- /usr/include/jsoncpp/json/json_features.h \
- /usr/include/jsoncpp/json/forwards.h /usr/include/jsoncpp/json/reader.h \
- /usr/include/jsoncpp/json/value.h /usr/include/jsoncpp/json/writer.h \
+ /home/debian/gtkks/include/LLMApi.h \
  /home/debian/gtkks/include/ModelSelector.h \
  /home/debian/gtkks/include/Config.h \
  /home/debian/gtkks/include/ApiManager.h /usr/include/c++/12/iostream

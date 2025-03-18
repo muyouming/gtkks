@@ -1,7 +1,13 @@
 #include "ChatView.h"
+#include "MainWindow.h"
+#include "LLMApi.h"
+#include <gtkmm.h>
 #include <iostream>
 #include <fstream>
-#include <json/json.h>
+#include <regex>
+#include <chrono>
+#include <ctime>
+#include <sstream>
 
 ChatView::ChatView()
     : Gtk::VBox(false, 10),
@@ -83,25 +89,22 @@ void ChatView::clearChat() {
 void ChatView::saveChat(const std::string& filename) {
     try {
         // Create JSON object
-        Json::Value root;
+        SimpleJson root;
         
         // Add messages
-        Json::Value jsonMessages(Json::arrayValue);
+        SimpleJson jsonMessages;
         for (const auto& message : messages) {
-            Json::Value jsonMessage;
-            jsonMessage["role"] = message.role;
-            jsonMessage["content"] = message.content;
-            jsonMessages.append(jsonMessage);
+            SimpleJson jsonMessage;
+            jsonMessage.addToObject("role", SimpleJson(message.role));
+            jsonMessage.addToObject("content", SimpleJson(message.content));
+            jsonMessages.addToArray(jsonMessage);
         }
-        root["messages"] = jsonMessages;
+        root.addToObject("messages", jsonMessages);
         
         // Write to file
         std::ofstream file(filename);
         if (file.is_open()) {
-            Json::StreamWriterBuilder builder;
-            builder["indentation"] = "  ";
-            std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-            writer->write(root, &file);
+            file << root.toJsonString();
             file.close();
             
             appendSystemMessage("Chat history saved to " + filename);
@@ -122,39 +125,38 @@ void ChatView::loadChat(const std::string& filename) {
             return;
         }
         
-        // Parse JSON
-        Json::Value root;
-        Json::CharReaderBuilder builder;
-        std::string errs;
-        if (!Json::parseFromStream(builder, file, &root, &errs)) {
-            appendSystemMessage("Error parsing file: " + errs);
-            return;
-        }
+        // Read entire file into a string
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        std::string fileContents = buffer.str();
         
         // Clear current chat
         clearChat();
         
-        // Load messages
-        if (root.isMember("messages") && root["messages"].isArray()) {
-            const Json::Value& jsonMessages = root["messages"];
-            for (const auto& jsonMessage : jsonMessages) {
-                if (jsonMessage.isMember("role") && jsonMessage.isMember("content")) {
-                    std::string role = jsonMessage["role"].asString();
-                    std::string content = jsonMessage["content"].asString();
-                    
-                    // Add message to chat
-                    appendMessage(role, content);
-                    
-                    // Add message to history
-                    Message message;
-                    message.role = role;
-                    message.content = content;
-                    messages.push_back(message);
-                }
+        // Extract messages using regex
+        std::regex messageRegex("\\{\"role\":\"([^\"]+)\",\"content\":\"([^\"]+)\"\\}");
+        std::smatch match;
+        std::string::const_iterator searchStart(fileContents.cbegin());
+        
+        while (std::regex_search(searchStart, fileContents.cend(), match, messageRegex)) {
+            if (match.size() > 2) {
+                std::string role = match[1].str();
+                std::string content = match[2].str();
+                
+                // Add message to chat
+                appendMessage(role, content);
+                
+                // Add message to history
+                Message message;
+                message.role = role;
+                message.content = content;
+                messages.push_back(message);
             }
             
-            appendSystemMessage("Chat history loaded from " + filename);
+            searchStart = match.suffix().first;
         }
+        
+        appendSystemMessage("Chat history loaded from " + filename);
     } catch (const std::exception& e) {
         appendSystemMessage("Error loading chat: " + std::string(e.what()));
     }

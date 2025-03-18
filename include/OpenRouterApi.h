@@ -1,11 +1,10 @@
 #pragma once
 
 #include "LLMApi.h"
+#include "HttpClient.h"
 #include <string>
 #include <vector>
 #include <functional>
-#include <json/json.h>
-#include <curlpp/cURLpp.hpp>
 #include <mutex>
 #include <thread>
 #include <atomic>
@@ -39,20 +38,25 @@ public:
     virtual void sendMessage(const std::string& message, const std::string& model, 
                             const std::function<void(const std::string&, bool)>& callback) override;
 
+    // Cancel ongoing requests
+    void cancelRequest() override;
+
 private:
-    std::string apiKey;
-    std::string endpoint;
+    // HTTP client
+    HttpClient httpClient;
+    
+    // Available models
     std::vector<std::string> availableModels;
     
     // Helper methods
-    Json::Value createRequestPayload(const std::vector<Message>& messages, const std::string& model);
+    SimpleJson createRequestPayload(const std::vector<Message>& messages, const std::string& model);
     std::string performHttpRequest(const std::string& url, const std::string& jsonPayload);
     std::vector<std::string> parseModelsResponse(const std::string& response);
     std::string parseCompletionResponse(const std::string& response);
 
     // Thread management
-    std::mutex mutex;
-    std::atomic<bool> cancelRequest;
+    std::mutex threadMutex;
+    std::atomic<bool> cancelRequestFlag;
     std::thread requestThread;
     
     void cleanupThread();

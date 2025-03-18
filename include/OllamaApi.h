@@ -1,6 +1,7 @@
 #pragma once
 
 #include "LLMApi.h"
+#include "HttpClient.h"
 #include <string>
 #include <vector>
 #include <thread>
@@ -21,17 +22,21 @@ public:
                         const std::string& model,
                         const std::function<void(const std::string&, bool)>& callback) override;
     bool isConfigured() const override;
-    std::string getName() const override;
+    std::string getName() const override {
+        return "Ollama";
+    }
+    void cancelRequest() override;
 
 private:
-    std::mutex mutex;
-    std::atomic<bool> cancelRequest;
+    HttpClient httpClient;
     std::thread requestThread;
+    std::atomic<bool> cancelRequestFlag;
+    std::mutex threadMutex;
 
     // Helper methods
-    Json::Value createRequestPayload(const std::vector<Message>& messages, const std::string& model);
-    std::string performHttpRequest(const std::string& url, const std::string& jsonPayload);
+    SimpleJson createRequestPayload(const std::vector<Message>& messages, const std::string& model);
+    std::string performHttpRequest(const std::string& url, const std::string& data);
     std::vector<std::string> parseModelsResponse(const std::string& response);
-    std::string parseCompletionResponse(const std::string& response);
+    std::string parseStreamingResponse(const std::string& response);
     void cleanupThread();
 }; 

@@ -1344,14 +1344,28 @@ CMakeFiles/gtkks.dir/src/ChatView.cpp.o: \
  /usr/include/gtkmm-2.4/gtkmm/uimanager.h \
  /usr/include/gtkmm-2.4/gtkmm/actiongroup.h \
  /usr/include/gtkmm-2.4/gtkmm/viewport.h \
- /home/debian/gtkks/include/LLMApi.h /usr/include/jsoncpp/json/json.h \
- /usr/include/jsoncpp/json/config.h /usr/include/jsoncpp/json/allocator.h \
- /usr/include/c++/12/cstring /usr/include/jsoncpp/json/version.h \
- /usr/include/jsoncpp/json/json_features.h \
- /usr/include/jsoncpp/json/forwards.h /usr/include/jsoncpp/json/reader.h \
- /usr/include/jsoncpp/json/value.h /usr/include/jsoncpp/json/writer.h \
- /usr/include/c++/12/iostream /usr/include/c++/12/fstream \
- /usr/include/c++/12/bits/codecvt.h \
+ /home/debian/gtkks/include/LLMApi.h \
+ /home/debian/gtkks/include/MainWindow.h \
+ /home/debian/gtkks/include/ModelSelector.h \
+ /home/debian/gtkks/include/Config.h /usr/include/c++/12/iostream \
+ /usr/include/c++/12/fstream /usr/include/c++/12/bits/codecvt.h \
  /usr/include/x86_64-linux-gnu/c++/12/bits/basic_file.h \
  /usr/include/x86_64-linux-gnu/c++/12/bits/c++io.h \
- /usr/include/c++/12/bits/fstream.tcc
+ /usr/include/c++/12/bits/fstream.tcc /usr/include/c++/12/regex \
+ /usr/include/c++/12/bitset /usr/include/c++/12/locale \
+ /usr/include/c++/12/bits/locale_facets_nonio.h \
+ /usr/include/x86_64-linux-gnu/c++/12/bits/time_members.h \
+ /usr/include/x86_64-linux-gnu/c++/12/bits/messages_members.h \
+ /usr/include/libintl.h /usr/include/c++/12/bits/locale_facets_nonio.tcc \
+ /usr/include/c++/12/bits/locale_conv.h \
+ /usr/include/c++/12/bits/regex_constants.h \
+ /usr/include/c++/12/bits/regex_error.h \
+ /usr/include/c++/12/bits/regex_automaton.h \
+ /usr/include/c++/12/bits/regex_automaton.tcc \
+ /usr/include/c++/12/bits/regex_scanner.h \
+ /usr/include/c++/12/bits/regex_scanner.tcc \
+ /usr/include/c++/12/bits/regex_compiler.h \
+ /usr/include/c++/12/bits/regex_compiler.tcc \
+ /usr/include/c++/12/bits/regex.h /usr/include/c++/12/bits/regex.tcc \
+ /usr/include/c++/12/bits/regex_executor.h \
+ /usr/include/c++/12/bits/regex_executor.tcc /usr/include/c++/12/chrono

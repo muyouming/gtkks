@@ -1,8 +1,9 @@
 #include "Config.h"
-#include <json/json.h>
+#include "LLMApi.h" // For SimpleJson
 #include <fstream>
 #include <iostream>
 #include <filesystem>
+#include <sstream>
 
 namespace fs = std::filesystem;
 
@@ -73,25 +74,25 @@ std::string Config::getConfigPath() const {
 
 void Config::save() {
     // Create JSON object
-    Json::Value root;
+    SimpleJson root;
     
     // Add API keys
-    Json::Value apiKeysJson;
+    SimpleJson apiKeysJson;
     for (const auto& [name, key] : apiKeys) {
-        apiKeysJson[name] = key;
+        apiKeysJson.addToObject(name, SimpleJson(key));
     }
-    root["apiKeys"] = apiKeysJson;
+    root.addToObject("apiKeys", apiKeysJson);
     
     // Add endpoints
-    Json::Value endpointsJson;
+    SimpleJson endpointsJson;
     for (const auto& [name, endpoint] : endpoints) {
-        endpointsJson[name] = endpoint;
+        endpointsJson.addToObject(name, SimpleJson(endpoint));
     }
-    root["endpoints"] = endpointsJson;
+    root.addToObject("endpoints", endpointsJson);
     
     // Add last used model
-    root["lastUsedApi"] = lastUsedApi;
-    root["lastUsedModel"] = lastUsedModel;
+    root.addToObject("lastUsedApi", SimpleJson(lastUsedApi));
+    root.addToObject("lastUsedModel", SimpleJson(lastUsedModel));
     
     // Get config file path
     std::string configPath = getConfigPath();
@@ -105,14 +106,101 @@ void Config::save() {
     // Write to file
     std::ofstream file(configPath);
     if (file.is_open()) {
-        Json::StreamWriterBuilder builder;
-        builder["indentation"] = "  ";
-        std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-        writer->write(root, &file);
+        file << root.toJsonString();
         file.close();
     } else {
         std::cerr << "Failed to save configuration to " << configPath << std::endl;
     }
+}
+
+// Simple JSON parsing function for our config file
+SimpleJson parseJson(std::istream& input) {
+    // We only need a simple parser for our config file
+    // This is not a full JSON parser but works for our specific needs
+    
+    std::string line;
+    std::string content;
+    
+    while (std::getline(input, line)) {
+        content += line;
+    }
+    
+    // Remove whitespace for simplicity
+    content.erase(std::remove_if(content.begin(), content.end(), 
+                  [](unsigned char c) { return std::isspace(c); }), content.end());
+    
+    // Parse the JSON
+    if (content.empty() || content[0] != '{' || content.back() != '}') {
+        return SimpleJson(); // Empty object
+    }
+    
+    SimpleJson result;
+    
+    // Remove outer braces
+    content = content.substr(1, content.length() - 2);
+    
+    // Split by commas, but be aware of nested objects and arrays
+    size_t pos = 0;
+    int bracketLevel = 0;
+    int braceLevel = 0;
+    std::string keyValuePair;
+    
+    for (size_t i = 0; i <= content.length(); i++) {
+        if (i == content.length() || (content[i] == ',' && bracketLevel == 0 && braceLevel == 0)) {
+            if (pos < i) {
+                keyValuePair = content.substr(pos, i - pos);
+                
+                // Find the colon separator
+                size_t colonPos = keyValuePair.find(':');
+                if (colonPos != std::string::npos) {
+                    std::string key = keyValuePair.substr(0, colonPos);
+                    std::string value = keyValuePair.substr(colonPos + 1);
+                    
+                    // Remove quotes from key
+                    if (key.front() == '"' && key.back() == '"') {
+                        key = key.substr(1, key.length() - 2);
+                    }
+                    
+                    // Parse value based on its type
+                    if (value.front() == '"' && value.back() == '"') {
+                        // String value
+                        value = value.substr(1, value.length() - 2);
+                        result.addToObject(key, SimpleJson(value));
+                    } else if (value.front() == '{' && value.back() == '}') {
+                        // Object value
+                        std::istringstream objectStream(value);
+                        result.addToObject(key, parseJson(objectStream));
+                    } else if (value == "true") {
+                        result.addToObject(key, SimpleJson(true));
+                    } else if (value == "false") {
+                        result.addToObject(key, SimpleJson(false));
+                    } else if (value == "null") {
+                        result.addToObject(key, SimpleJson());
+                    } else {
+                        // Try to parse as number
+                        try {
+                            double number = std::stod(value);
+                            result.addToObject(key, SimpleJson(number));
+                        } catch (...) {
+                            // If all else fails, store as string
+                            result.addToObject(key, SimpleJson(value));
+                        }
+                    }
+                }
+            }
+            pos = i + 1;
+        } else if (content[i] == '{') {
+            braceLevel++;
+        } else if (content[i] == '}') {
+            braceLevel--;
+        } else if (content[i] == '[') {
+            bracketLevel++;
+        } else if (content[i] == ']') {
+            bracketLevel--;
+        }
+    }
+    
+    return result;
 }
 
 void Config::load() {
@@ -132,45 +220,52 @@ void Config::load() {
     }
     
     // Parse JSON
-    Json::Value root;
-    Json::CharReaderBuilder builder;
-    std::string errs;
-    if (!Json::parseFromStream(builder, file, &root, &errs)) {
-        std::cerr << "Failed to parse configuration: " << errs << std::endl;
-        return;
-    }
+    SimpleJson root = parseJson(file);
     
     // Load API keys
-    if (root.isMember("apiKeys") && root["apiKeys"].isObject()) {
-        const Json::Value& apiKeysJson = root["apiKeys"];
-        for (const auto& name : apiKeysJson.getMemberNames()) {
-            apiKeys[name] = apiKeysJson[name].asString();
+    if (root.hasKey("apiKeys")) {
+        const SimpleJson& apiKeysJson = root["apiKeys"];
+        // In a full implementation, we would iterate through all keys
+        // For simplicity, we'll just check for known API names
+        const std::string apiNames[] = {
+            "openai", "ollama", "gemini", "deepseek", "openrouter"
+        };
+        
+        for (const auto& name : apiNames) {
+            if (apiKeysJson.hasKey(name)) {
+                apiKeys[name] = apiKeysJson[name].asString();
+            }
         }
     }
     
     // Load endpoints
-    if (root.isMember("endpoints") && root["endpoints"].isObject()) {
-        const Json::Value& endpointsJson = root["endpoints"];
-        for (const auto& name : endpointsJson.getMemberNames()) {
-            endpoints[name] = endpointsJson[name].asString();
+    if (root.hasKey("endpoints")) {
+        const SimpleJson& endpointsJson = root["endpoints"];
+        const std::string apiNames[] = {
+            "openai", "ollama", "gemini", "deepseek", "openrouter"
+        };
+        
+        for (const auto& name : apiNames) {
+            if (endpointsJson.hasKey(name)) {
+                endpoints[name] = endpointsJson[name].asString();
+            }
         }
     }
     
     // Load last used model
-    if (root.isMember("lastUsedApi")) {
+    if (root.hasKey("lastUsedApi")) {
         lastUsedApi = root["lastUsedApi"].asString();
     }
     
-    if (root.isMember("lastUsedModel")) {
+    if (root.hasKey("lastUsedModel")) {
         lastUsedModel = root["lastUsedModel"].asString();
     }
 }
 
 void Config::initDefaultEndpoints() {
-    // Set default endpoints
-    endpoints["Ollama"] = "http://localhost:11434";
-    endpoints["OpenAI"] = "https://api.openai.com/v1";
-    endpoints["Gemini"] = "https://generativelanguage.googleapis.com/v1";
-    endpoints["Deepseek"] = "https://api.deepseek.com/v1";
-    endpoints["OpenRouter"] = "https://openrouter.ai/api/v1";
+    endpoints["openai"] = "https://api.openai.com/v1";
+    endpoints["ollama"] = "http://localhost:11434";
+    endpoints["gemini"] = "https://generativelanguage.googleapis.com/v1beta";
+    endpoints["deepseek"] = "https://api.deepseek.com/v1";
+    endpoints["openrouter"] = "https://openrouter.ai/api/v1";
 } 

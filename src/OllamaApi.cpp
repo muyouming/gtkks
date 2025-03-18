@@ -1,15 +1,8 @@
 #include "OllamaApi.h"
-#include <curlpp/cURLpp.hpp>
-#include <curlpp/Easy.hpp>
-#include <curlpp/Options.hpp>
-#include <json/json.h>
 #include <sstream>
 #include <iostream>
 
-OllamaApi::OllamaApi() : cancelRequest(false) {
-    // Initialize curlpp
-    curlpp::initialize();
-    
+OllamaApi::OllamaApi() : cancelRequestFlag(false) {
     // Set default endpoint
     setEndpoint("http://localhost:11434");
 }
@@ -17,9 +10,6 @@ OllamaApi::OllamaApi() : cancelRequest(false) {
 OllamaApi::~OllamaApi() {
     // Cleanup thread
     cleanupThread();
-    
-    // Cleanup curlpp
-    curlpp::terminate();
 }
 
 std::vector<std::string> OllamaApi::getAvailableModels() {
@@ -61,7 +51,7 @@ void OllamaApi::sendChatRequest(const std::vector<Message>& messages,
     cleanupThread();
     
     // Reset cancel flag
-    cancelRequest = false;
+    cancelRequestFlag = false;
     
     // Create a new thread for the request
     requestThread = std::thread([this, messages, model, callback]() {
@@ -70,73 +60,102 @@ void OllamaApi::sendChatRequest(const std::vector<Message>& messages,
             std::string url = getEndpoint() + "/api/chat";
             
             // Create request payload
-            Json::Value payload = createRequestPayload(messages, model);
+            SimpleJson payload = createRequestPayload(messages, model);
             
             // Convert to string
-            Json::StreamWriterBuilder writer;
-            writer["indentation"] = "";
-            std::string jsonPayload = Json::writeString(writer, payload);
+            std::string jsonPayload = payload.toJsonString();
             
-            // Set up curl request
-            curlpp::Easy request;
+            // Set content type
+            httpClient.clearHeaders();
+            httpClient.setHeader("Content-Type", "application/json");
             
-            // Set URL
-            request.setOpt(new curlpp::options::Url(url));
-            
-            // Set headers
-            std::list<std::string> headers;
-            headers.push_back("Content-Type: application/json");
-            request.setOpt(new curlpp::options::HttpHeader(headers));
-            
-            // Set POST data
-            request.setOpt(new curlpp::options::PostFields(jsonPayload));
-            request.setOpt(new curlpp::options::PostFieldSize(jsonPayload.length()));
-            
-            // Set up write function to handle streaming
+            // Use streaming response
             std::string buffer;
-            request.setOpt(new curlpp::options::WriteFunction([&buffer, &callback, this](char* ptr, size_t size, size_t nmemb) -> size_t {
-                // Check if request was cancelled
-                if (cancelRequest) {
-                    return 0;
-                }
-                
-                size_t totalSize = size * nmemb;
-                std::string chunk(ptr, totalSize);
-                buffer += chunk;
-                
-                // Process buffer line by line
-                size_t pos = 0;
-                while ((pos = buffer.find("\n")) != std::string::npos) {
-                    std::string line = buffer.substr(0, pos);
-                    buffer.erase(0, pos + 1);
+            
+            // Make the request with streaming response
+            httpClient.postStreaming(
+                url, 
+                jsonPayload,
+                [&buffer, &callback, this](const std::string& chunk) -> bool {
+                    // Check if request was cancelled
+                    if (cancelRequestFlag) {
+                        return false;
+                    }
                     
-                    // Parse JSON
-                    Json::Value root;
-                    Json::CharReaderBuilder reader;
-                    std::string errors;
-                    std::istringstream iss(line);
+                    buffer += chunk;
                     
-                    if (Json::parseFromStream(reader, iss, &root, &errors)) {
-                        // Check if this is a done message
-                        if (root.isMember("done") && root["done"].asBool()) {
-                            callback("", true);
-                            return totalSize;
-                        }
+                    // Process buffer line by line
+                    size_t pos = 0;
+                    while ((pos = buffer.find("\n")) != std::string::npos) {
+                        std::string line = buffer.substr(0, pos);
+                        buffer.erase(0, pos + 1);
                         
-                        // Extract content
-                        if (root.isMember("message") && 
-                            root["message"].isMember("content")) {
-                            std::string content = root["message"]["content"].asString();
-                            callback(content, false);
+                        if (line.empty()) continue;
+                        
+                        // Try to parse as JSON
+                        try {
+                            // Here we're looking for JSON in the format:
+                            // {"message":{"content":"text"},"done":false|true}
+                            
+                            // Simple JSON parsing for "done" field
+                            size_t donePos = line.find("\"done\":");
+                            if (donePos != std::string::npos) {
+                                size_t valueStart = donePos + 7; // Length of "done":
+                                bool isDone = (line.find("true", valueStart) != std::string::npos);
+                                
+                                if (isDone) {
+                                    callback("", true);
+                                    return true;
+                                }
+                            }
+                            
+                            // Simple JSON parsing for message content
+                            size_t contentPos = line.find("\"content\":");
+                            if (contentPos != std::string::npos) {
+                                size_t valueStart = contentPos + 10; // Length of "content":
+                                
+                                // Find the opening quote
+                                size_t quoteStart = line.find("\"", valueStart);
+                                if (quoteStart != std::string::npos) {
+                                    size_t quoteEnd = line.find("\"", quoteStart + 1);
+                                    if (quoteEnd != std::string::npos) {
+                                        std::string content = line.substr(quoteStart + 1, quoteEnd - quoteStart - 1);
+                                        
+                                        // Unescape JSON string
+                                        std::string unescaped;
+                                        for (size_t i = 0; i < content.length(); ++i) {
+                                            if (content[i] == '\\' && i + 1 < content.length()) {
+                                                if (content[i + 1] == 'n') {
+                                                    unescaped += '\n';
+                                                } else if (content[i + 1] == 'r') {
+                                                    unescaped += '\r';
+                                                } else if (content[i + 1] == 't') {
+                                                    unescaped += '\t';
+                                                } else if (content[i + 1] == '\"') {
+                                                    unescaped += '\"';
+                                                } else if (content[i + 1] == '\\') {
+                                                    unescaped += '\\';
+                                                } else {
+                                                    unescaped += content[i + 1];
+                                                }
+                                                i++; // Skip the escaped character
+                                            } else {
+                                                unescaped += content[i];
+                                            }
+                                        }
+                                        
+                                        callback(unescaped, false);
+                                    }
+                                }
+                            }
+                        } catch (const std::exception& e) {
+                            std::cerr << "Error parsing response: " << e.what() << std::endl;
                         }
                     }
+                    
+                    return true;
                 }
-                
-                return totalSize;
-            }));
-            
-            // Perform request
-            request.perform();
+            );
             
         } catch (const std::exception& e) {
             // Handle errors
@@ -150,81 +169,71 @@ bool OllamaApi::isConfigured() const {
     return !getEndpoint().empty();
 }
 
-std::string OllamaApi::getName() const {
-    return "Ollama";
+void OllamaApi::cancelRequest() {
+    // Set the cancel flag
+    cancelRequestFlag = true;
+    
+    // Cancel any ongoing HTTP request
+    httpClient.cancelRequest();
 }
 
-Json::Value OllamaApi::createRequestPayload(const std::vector<Message>& messages, const std::string& model) {
-    Json::Value root;
-    Json::Value jsonMessages(Json::arrayValue);
-    
-    // Add messages
-    for (const auto& message : messages) {
-        Json::Value jsonMessage;
-        jsonMessage["role"] = message.role;
-        jsonMessage["content"] = message.content;
-        jsonMessages.append(jsonMessage);
-    }
-    
-    // Set model and messages
-    root["model"] = model;
-    root["messages"] = jsonMessages;
-    root["stream"] = true;
-    
-    return root;
-}
-
-std::string OllamaApi::performHttpRequest(const std::string& url, const std::string& jsonPayload) {
-    try {
-        // Create curl request
-        curlpp::Easy request;
-        
-        // Set URL
-        request.setOpt(new curlpp::options::Url(url));
-        
-        // Set headers
-        std::list<std::string> headers;
-        headers.push_back("Content-Type: application/json");
-        request.setOpt(new curlpp::options::HttpHeader(headers));
-        
-        // Set POST data if provided
-        if (!jsonPayload.empty()) {
-            request.setOpt(new curlpp::options::PostFields(jsonPayload));
-            request.setOpt(new curlpp::options::PostFieldSize(jsonPayload.length()));
+void OllamaApi::cleanupThread() {
+    // Check if thread is running
+    if (requestThread.joinable()) {
+        {
+            std::lock_guard<std::mutex> lock(threadMutex);
+            cancelRequestFlag = true;
         }
         
-        // Capture response
-        std::ostringstream responseStream;
-        request.setOpt(new curlpp::options::WriteStream(&responseStream));
+        // Cancel any ongoing HTTP request
+        httpClient.cancelRequest();
         
-        // Perform request
-        request.perform();
-        
-        return responseStream.str();
-        
-    } catch (const std::exception& e) {
-        throw std::runtime_error(std::string("HTTP request failed: ") + e.what());
+        // Wait for thread to finish
+        requestThread.join();
     }
+}
+
+SimpleJson OllamaApi::createRequestPayload(const std::vector<Message>& messages, const std::string& model) {
+    SimpleJson payload;
+    
+    // Add model
+    payload.addToObject("model", SimpleJson(model));
+    
+    // Add messages
+    SimpleJson jsonMessages;
+    
+    for (const auto& message : messages) {
+        SimpleJson jsonMessage;
+        jsonMessage.addToObject("role", SimpleJson(message.role));
+        jsonMessage.addToObject("content", SimpleJson(message.content));
+        
+        jsonMessages.addToArray(jsonMessage);
+    }
+    
+    payload.addToObject("messages", jsonMessages);
+    
+    // Add stream flag
+    payload.addToObject("stream", SimpleJson(true));
+    
+    return payload;
 }
 
 std::vector<std::string> OllamaApi::parseModelsResponse(const std::string& response) {
     std::vector<std::string> models;
     
     try {
-        // Parse JSON
-        Json::Value root;
-        Json::CharReaderBuilder reader;
-        std::string errors;
-        std::istringstream iss(response);
+        // The response is JSON in the format:
+        // {"models":[{"name":"model1"},{"name":"model2"}]}
         
-        if (Json::parseFromStream(reader, iss, &root, &errors)) {
-            // Extract models
-            if (root.isMember("models") && root["models"].isArray()) {
-                for (const auto& model : root["models"]) {
-                    if (model.isMember("name") && model["name"].isString()) {
-                        models.push_back(model["name"].asString());
-                    }
-                }
+        // Simple parsing for model names
+        size_t pos = 0;
+        while ((pos = response.find("\"name\":\"", pos)) != std::string::npos) {
+            pos += 8; // Length of "name":"
+            size_t end = response.find("\"", pos);
+            if (end != std::string::npos) {
+                std::string modelName = response.substr(pos, end - pos);
+                models.push_back(modelName);
+                pos = end;
             }
         }
     } catch (const std::exception& e) {
@@ -234,33 +243,29 @@ std::vector<std::string> OllamaApi::parseModelsResponse(const std::string& respo
     return models;
 }
 
-std::string OllamaApi::parseCompletionResponse(const std::string& response) {
+std::string OllamaApi::parseStreamingResponse(const std::string& response) {
     try {
-        // Parse JSON
-        Json::Value root;
-        Json::CharReaderBuilder reader;
-        std::string errors;
-        std::istringstream iss(response);
+        // The streaming response is a series of JSON objects
+        // Each object has a "message" field with the generated text
         
-        if (Json::parseFromStream(reader, iss, &root, &errors)) {
-            // Extract response
-            if (root.isMember("response") && root["response"].isString()) {
-                return root["response"].asString();
-            }
-        }
+        return response;
     } catch (const std::exception& e) {
-        std::cerr << "Error parsing completion response: " << e.what() << std::endl;
+        std::cerr << "Error parsing streaming response: " << e.what() << std::endl;
+        return "";
     }
-    
-    return "";
 }
 
-void OllamaApi::cleanupThread() {
-    // Cancel any ongoing request
-    cancelRequest = true;
-    
-    // Wait for thread to finish
-    if (requestThread.joinable()) {
-        requestThread.join();
+std::string OllamaApi::performHttpRequest(const std::string& url, const std::string& data) {
+    try {
+        // Set content type if we have data
+        httpClient.clearHeaders();
+        if (!data.empty()) {
+            httpClient.setHeader("Content-Type", "application/json");
+            return httpClient.post(url, data);
+        } else {
+            return httpClient.get(url);
+        }
+    } catch (const std::exception& e) {
+        throw std::runtime_error("HTTP request failed: " + std::string(e.what()));
     }
 } 

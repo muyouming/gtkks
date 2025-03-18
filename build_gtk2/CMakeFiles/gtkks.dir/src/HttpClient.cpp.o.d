@@ -1,7 +1,6 @@
-CMakeFiles/gtkks.dir/src/OpenAIApi.cpp.o: \
- /home/debian/gtkks/src/OpenAIApi.cpp /usr/include/stdc-predef.h \
- /home/debian/gtkks/include/OpenAIApi.h \
- /home/debian/gtkks/include/LLMApi.h /usr/include/c++/12/string \
+CMakeFiles/gtkks.dir/src/HttpClient.cpp.o: \
+ /home/debian/gtkks/src/HttpClient.cpp /usr/include/stdc-predef.h \
+ /home/debian/gtkks/include/HttpClient.h /usr/include/c++/12/string \
  /usr/include/x86_64-linux-gnu/c++/12/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/12/bits/os_defines.h \
  /usr/include/features.h /usr/include/features-time64.h \
@@ -114,11 +113,7 @@ CMakeFiles/gtkks.dir/src/OpenAIApi.cpp.o: \
  /usr/include/asm-generic/errno.h /usr/include/asm-generic/errno-base.h \
  /usr/include/x86_64-linux-gnu/bits/types/error_t.h \
  /usr/include/c++/12/bits/charconv.h \
- /usr/include/c++/12/bits/basic_string.tcc /usr/include/c++/12/vector \
- /usr/include/c++/12/bits/stl_uninitialized.h \
- /usr/include/c++/12/bits/stl_vector.h \
- /usr/include/c++/12/bits/stl_bvector.h \
- /usr/include/c++/12/bits/vector.tcc /usr/include/c++/12/functional \
+ /usr/include/c++/12/bits/basic_string.tcc /usr/include/c++/12/functional \
  /usr/include/c++/12/tuple /usr/include/c++/12/bits/uses_allocator.h \
  /usr/include/c++/12/bits/std_function.h /usr/include/c++/12/typeinfo \
  /usr/include/c++/12/unordered_map \
@@ -128,16 +123,17 @@ CMakeFiles/gtkks.dir/src/OpenAIApi.cpp.o: \
  /usr/include/c++/12/bits/enable_special_members.h \
  /usr/include/c++/12/bits/node_handle.h \
  /usr/include/c++/12/bits/unordered_map.h \
- /usr/include/c++/12/bits/erase_if.h /usr/include/c++/12/array \
+ /usr/include/c++/12/bits/erase_if.h /usr/include/c++/12/vector \
+ /usr/include/c++/12/bits/stl_uninitialized.h \
+ /usr/include/c++/12/bits/stl_vector.h \
+ /usr/include/c++/12/bits/stl_bvector.h \
+ /usr/include/c++/12/bits/vector.tcc /usr/include/c++/12/array \
  /usr/include/c++/12/compare /usr/include/c++/12/bits/stl_algo.h \
  /usr/include/c++/12/bits/algorithmfwd.h \
  /usr/include/c++/12/bits/stl_heap.h \
  /usr/include/c++/12/bits/stl_tempbuf.h \
- /usr/include/c++/12/bits/uniform_int_dist.h /usr/include/c++/12/map \
- /usr/include/c++/12/bits/stl_tree.h /usr/include/c++/12/bits/stl_map.h \
- /usr/include/c++/12/bits/stl_multimap.h \
- /home/debian/gtkks/include/HttpClient.h /usr/include/gtkmm-2.4/gtkmm.h \
- /usr/include/glibmm-2.4/glibmm.h \
+ /usr/include/c++/12/bits/uniform_int_dist.h \
+ /usr/include/gtkmm-2.4/gtkmm.h /usr/include/glibmm-2.4/glibmm.h \
  /usr/lib/x86_64-linux-gnu/glibmm-2.4/include/glibmmconfig.h \
  /usr/include/glibmm-2.4/glibmm/thread.h /usr/include/glib-2.0/glib.h \
  /usr/include/glib-2.0/glib/galloca.h /usr/include/glib-2.0/glib/gtypes.h \
@@ -359,7 +355,9 @@ CMakeFiles/gtkks.dir/src/OpenAIApi.cpp.o: \
  /usr/include/glibmm-2.4/glibmm/varianttype.h \
  /usr/include/glibmm-2.4/glibmm/variantiter.h \
  /usr/include/glibmm-2.4/glibmm/variantdbusstring.h \
- /usr/include/c++/12/memory \
+ /usr/include/c++/12/map /usr/include/c++/12/bits/stl_tree.h \
+ /usr/include/c++/12/bits/stl_map.h \
+ /usr/include/c++/12/bits/stl_multimap.h /usr/include/c++/12/memory \
  /usr/include/c++/12/bits/stl_raw_storage_iter.h \
  /usr/include/c++/12/bits/align.h /usr/include/c++/12/bit \
  /usr/include/c++/12/bits/unique_ptr.h \
@@ -1347,11 +1345,9 @@ CMakeFiles/gtkks.dir/src/OpenAIApi.cpp.o: \
  /usr/include/gtkmm-2.4/gtkmm/treestore.h \
  /usr/include/gtkmm-2.4/gtkmm/uimanager.h \
  /usr/include/gtkmm-2.4/gtkmm/actiongroup.h \
- /usr/include/gtkmm-2.4/gtkmm/viewport.h /usr/include/c++/12/thread \
- /usr/include/c++/12/bits/std_thread.h \
- /usr/include/c++/12/bits/this_thread_sleep.h /usr/include/c++/12/atomic \
- /usr/include/c++/12/iostream /usr/include/c++/12/regex \
- /usr/include/c++/12/bitset /usr/include/c++/12/locale \
+ /usr/include/gtkmm-2.4/gtkmm/viewport.h /usr/include/c++/12/iostream \
+ /usr/include/c++/12/regex /usr/include/c++/12/bitset \
+ /usr/include/c++/12/locale \
  /usr/include/c++/12/bits/locale_facets_nonio.h \
  /usr/include/x86_64-linux-gnu/c++/12/bits/time_members.h \
  /usr/include/x86_64-linux-gnu/c++/12/bits/messages_members.h \

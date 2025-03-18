@@ -1,252 +1,267 @@
 #include "GeminiApi.h"
-#include <curlpp/cURLpp.hpp>
-#include <curlpp/Easy.hpp>
-#include <curlpp/Options.hpp>
-#include <json/json.h>
 #include <sstream>
 #include <iostream>
+#include <regex>
 
-GeminiApi::GeminiApi() 
-    : cancelRequest(false) {
+GeminiApi::GeminiApi() : cancelRequestFlag(false) {
     // Set default endpoint
-    setEndpoint("https://generativelanguage.googleapis.com/v1");
+    setEndpoint("https://generativelanguage.googleapis.com/v1beta");
 }
 
 GeminiApi::~GeminiApi() {
+    // Cleanup thread
     cleanupThread();
 }
 
-void GeminiApi::setApiKey(const std::string& newApiKey) {
-    std::lock_guard<std::mutex> lock(mutex);
-    apiKey = newApiKey;
+void GeminiApi::setApiKey(const std::string& apiKey) {
+    LLMApi::setApiKey(apiKey);
 }
 
-void GeminiApi::setEndpoint(const std::string& newEndpoint) {
-    std::lock_guard<std::mutex> lock(mutex);
-    endpoint = newEndpoint;
+void GeminiApi::setEndpoint(const std::string& endpoint) {
+    LLMApi::setEndpoint(endpoint);
 }
 
 std::vector<std::string> GeminiApi::getAvailableModels() {
-    // Gemini has a fixed set of models
-    return {"gemini-pro", "gemini-pro-vision", "gemini-1.5-pro", "gemini-1.5-flash"};
+    if (!availableModels.empty()) {
+        return availableModels;
+    }
+
+    try {
+        if (getApiKey().empty()) {
+            throw std::runtime_error("API key not set");
+        }
+        
+        // Try to fetch models from API if needed
+        std::string url = getEndpoint() + "/models?key=" + getApiKey();
+        
+        try {
+            // Set headers
+            httpClient.clearHeaders();
+            
+            // Perform request with a timeout
+            std::string response = httpClient.get(url);
+            
+            // Parse response
+            std::regex modelRegex("\"name\"\\s*:\\s*\"([^\"]+)\"");
+            std::smatch match;
+            std::string::const_iterator searchStart(response.cbegin());
+            
+            while (std::regex_search(searchStart, response.cend(), match, modelRegex)) {
+                if (match.size() > 1) {
+                    // Extract model name
+                    std::string fullName = match[1].str();
+                    // The API returns full paths like "models/gemini-pro", extract just the model name
+                    size_t lastSlash = fullName.find_last_of('/');
+                    if (lastSlash != std::string::npos) {
+                        availableModels.push_back(fullName.substr(lastSlash + 1));
+                    } else {
+                        availableModels.push_back(fullName);
+                    }
+                }
+                searchStart = match.suffix().first;
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "Error fetching models from API: " << e.what() << std::endl;
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "Error in getAvailableModels: " << e.what() << std::endl;
+    }
+    
+    // If no models were found or there was an error, use defaults
+    if (availableModels.empty()) {
+        // Gemini models are predefined
+        availableModels.push_back("gemini-pro");
+        availableModels.push_back("gemini-pro-vision");
+    }
+    
+    return availableModels;
 }
 
 void GeminiApi::sendMessage(const std::string& message, const std::string& model, 
                           const std::function<void(const std::string&, bool)>& callback) {
-    // Create a single message
+    // Create a message vector with a single user message
     std::vector<Message> messages;
     Message userMessage;
     userMessage.role = "user";
     userMessage.content = message;
     messages.push_back(userMessage);
     
-    // Send the message
+    // Call the chat request method
     sendChatRequest(messages, model, callback);
 }
 
 void GeminiApi::sendChatRequest(const std::vector<Message>& messages, 
-                               const std::string& model,
-                               const std::function<void(const std::string&, bool)>& callback) {
-    // Clean up any previous request thread
+                              const std::string& model,
+                              const std::function<void(const std::string&, bool)>& callback) {
+    // Clean up previous request
     cleanupThread();
     
     // Reset cancel flag
-    cancelRequest = false;
+    cancelRequestFlag = false;
     
     // Create a new thread for the request
     requestThread = std::thread([this, messages, model, callback]() {
         try {
-            // Check if API key is set
-            if (getApiKey().empty()) {
-                callback("Error: API key not set", true);
-                return;
-            }
-            
-            // Create request payload
-            Json::Value payload = createRequestPayload(messages, model);
-            
-            // Convert to string
-            Json::StreamWriterBuilder builder;
-            builder["indentation"] = "";
-            std::string jsonPayload = Json::writeString(builder, payload);
-            
             // Create URL with API key
             std::string url = getEndpoint() + "/models/" + model + ":generateContent?key=" + getApiKey();
             
-            // Initialize curlpp
-            curlpp::Cleanup cleanup;
-            curlpp::Easy request;
+            // Create payload
+            SimpleJson payload = createRequestPayload(messages, model);
             
-            // Set URL
-            request.setOpt(new curlpp::options::Url(url));
+            // Convert to string
+            std::string jsonPayload = payload.toJsonString();
             
-            // Set method and headers
-            std::list<std::string> headers;
-            headers.push_back("Content-Type: application/json");
-            request.setOpt(new curlpp::options::HttpHeader(headers));
-            request.setOpt(new curlpp::options::Post(true));
-            request.setOpt(new curlpp::options::PostFields(jsonPayload));
-            request.setOpt(new curlpp::options::PostFieldSize(jsonPayload.length()));
-            
-            // Set up response handling
-            std::ostringstream responseStream;
-            request.setOpt(new curlpp::options::WriteStream(&responseStream));
+            // Set headers
+            httpClient.clearHeaders();
+            httpClient.setHeader("Content-Type", "application/json");
             
             // Perform request
-            request.perform();
+            std::string response = httpClient.post(url, jsonPayload);
             
-            // Parse response
-            std::string response = responseStream.str();
+            // Extract the content from the response
             std::string content = parseCompletionResponse(response);
             
-            // Call callback with response
-            if (!cancelRequest) {
-                callback(content, true);
-            }
+            // Send the response to the callback
+            callback(content, true);
+            
         } catch (const std::exception& e) {
-            std::cerr << "Error sending chat request: " << e.what() << std::endl;
-            if (!cancelRequest) {
-                callback("Error: " + std::string(e.what()), true);
-            }
+            // Handle errors
+            callback("Error: " + std::string(e.what()), true);
         }
     });
 }
 
-bool GeminiApi::isConfigured() const {
-    return !getApiKey().empty();
+std::string GeminiApi::performHttpRequest(const std::string& url, const std::string& jsonPayload) {
+    try {
+        // Set content type if posting data
+        httpClient.clearHeaders();
+        httpClient.setHeader("Content-Type", "application/json");
+        
+        if (!jsonPayload.empty()) {
+            return httpClient.post(url, jsonPayload);
+        } else {
+            return httpClient.get(url);
+        }
+    } catch (const std::exception& e) {
+        throw std::runtime_error("HTTP request failed: " + std::string(e.what()));
+    }
 }
 
-std::string GeminiApi::getName() const {
-    return "Gemini";
-}
-
-Json::Value GeminiApi::createRequestPayload(const std::vector<Message>& messages, const std::string& model) {
-    Json::Value payload;
+SimpleJson GeminiApi::createRequestPayload(const std::vector<Message>& messages, const std::string& model) {
+    SimpleJson payload;
     
     // Create contents array
-    Json::Value contents(Json::arrayValue);
+    SimpleJson contents;
     
     // Convert messages to Gemini format
-    for (size_t i = 0; i < messages.size(); ++i) {
-        const auto& message = messages[i];
-        
-        Json::Value content;
-        Json::Value parts(Json::arrayValue);
-        Json::Value textPart;
-        
-        textPart["text"] = message.content;
-        parts.append(textPart);
-        
-        content["parts"] = parts;
-        
-        // Map roles to Gemini roles
-        if (message.role == "user") {
-            content["role"] = "user";
-        } else if (message.role == "assistant") {
-            content["role"] = "model";
-        } else if (message.role == "system") {
-            // Gemini doesn't have a system role, so we'll add it as a user message
-            content["role"] = "user";
+    // In Gemini API, we need to group consecutive messages by the same role
+    std::string currentRole = "";
+    SimpleJson currentParts;
+    
+    for (const auto& message : messages) {
+        if (message.role != currentRole && !currentRole.empty()) {
+            // Add the previous message to contents
+            SimpleJson content;
+            content.addToObject("role", SimpleJson(currentRole == "user" ? "user" : "model"));
+            content.addToObject("parts", currentParts);
+            contents.addToArray(content);
+            
+            // Reset for next message
+            currentParts = SimpleJson();
         }
         
-        contents.append(content);
+        // Set current role
+        currentRole = message.role;
+        
+        // Add part
+        SimpleJson part;
+        part.addToObject("text", SimpleJson(message.content));
+        currentParts.addToArray(part);
     }
     
-    payload["contents"] = contents;
+    // Add the last message
+    if (!currentRole.empty()) {
+        SimpleJson content;
+        content.addToObject("role", SimpleJson(currentRole == "user" ? "user" : "model"));
+        content.addToObject("parts", currentParts);
+        contents.addToArray(content);
+    }
+    
+    payload.addToObject("contents", contents);
     
     // Add generation config
-    Json::Value generationConfig;
-    generationConfig["temperature"] = 0.7;
-    generationConfig["topK"] = 40;
-    generationConfig["topP"] = 0.95;
-    generationConfig["maxOutputTokens"] = 8192;
-    
-    payload["generationConfig"] = generationConfig;
+    SimpleJson generationConfig;
+    generationConfig.addToObject("temperature", SimpleJson(0.7));
+    generationConfig.addToObject("maxOutputTokens", SimpleJson(800.0));
+    payload.addToObject("generationConfig", generationConfig);
     
     return payload;
 }
 
-std::string GeminiApi::performHttpRequest(const std::string& url, const std::string& jsonPayload) {
-    try {
-        // Initialize curlpp
-        curlpp::Cleanup cleanup;
-        curlpp::Easy request;
-        
-        // Set URL
-        request.setOpt(new curlpp::options::Url(url));
-        
-        // Set method and headers if needed
-        if (!jsonPayload.empty()) {
-            std::list<std::string> headers;
-            headers.push_back("Content-Type: application/json");
-            request.setOpt(new curlpp::options::HttpHeader(headers));
-            request.setOpt(new curlpp::options::Post(true));
-            request.setOpt(new curlpp::options::PostFields(jsonPayload));
-            request.setOpt(new curlpp::options::PostFieldSize(jsonPayload.length()));
-        }
-        
-        // Set up response handling
-        std::ostringstream responseStream;
-        request.setOpt(new curlpp::options::WriteStream(&responseStream));
-        
-        // Perform request
-        request.perform();
-        
-        // Return response
-        return responseStream.str();
-    } catch (const std::exception& e) {
-        std::cerr << "HTTP request error: " << e.what() << std::endl;
-        throw;
-    }
-}
-
-std::vector<std::string> GeminiApi::parseModelsResponse(const std::string& response) {
-    // Not used for Gemini as we return a fixed set of models
-    return {};
-}
-
 std::string GeminiApi::parseCompletionResponse(const std::string& response) {
     try {
-        // Parse JSON
-        Json::Value root;
-        Json::CharReaderBuilder builder;
-        std::string errs;
-        std::istringstream responseStream(response);
-        if (!Json::parseFromStream(builder, responseStream, &root, &errs)) {
-            std::cerr << "Failed to parse completion response: " << errs << std::endl;
-            return "Error parsing response";
-        }
+        // Simple parsing - look for text content in the response
+        std::regex contentRegex("\"text\"\\s*:\\s*\"((?:\\\\.|[^\"])*?)\"");
+        std::smatch match;
         
-        // Check for errors
-        if (root.isMember("error")) {
-            if (root["error"].isMember("message")) {
-                return "Error: " + root["error"]["message"].asString();
+        if (std::regex_search(response, match, contentRegex) && match.size() > 1) {
+            std::string content = match[1].str();
+            
+            // Unescape JSON string
+            std::string unescaped;
+            for (size_t i = 0; i < content.length(); ++i) {
+                if (content[i] == '\\' && i + 1 < content.length()) {
+                    if (content[i + 1] == 'n') {
+                        unescaped += '\n';
+                    } else if (content[i + 1] == 'r') {
+                        unescaped += '\r';
+                    } else if (content[i + 1] == 't') {
+                        unescaped += '\t';
+                    } else if (content[i + 1] == '\"') {
+                        unescaped += '\"';
+                    } else if (content[i + 1] == '\\') {
+                        unescaped += '\\';
+                    } else {
+                        unescaped += content[i + 1];
+                    }
+                    i++; // Skip the escaped character
+                } else {
+                    unescaped += content[i];
+                }
             }
-            return "Unknown API error";
+            
+            return unescaped;
         }
         
-        // Extract message content
-        if (root.isMember("candidates") && root["candidates"].isArray() && 
-            root["candidates"].size() > 0 && root["candidates"][0].isMember("content") && 
-            root["candidates"][0]["content"].isMember("parts") && 
-            root["candidates"][0]["content"]["parts"].isArray() && 
-            root["candidates"][0]["content"]["parts"].size() > 0 && 
-            root["candidates"][0]["content"]["parts"][0].isMember("text")) {
-            return root["candidates"][0]["content"]["parts"][0]["text"].asString();
+        // Also check for error messages
+        std::regex errorRegex("\"message\"\\s*:\\s*\"((?:\\\\.|[^\"])*?)\"");
+        if (std::regex_search(response, match, errorRegex) && match.size() > 1) {
+            return "Error: " + match[1].str();
         }
     } catch (const std::exception& e) {
-        std::cerr << "Error parsing completion: " << e.what() << std::endl;
+        std::cerr << "Error parsing completion response: " << e.what() << std::endl;
     }
     
-    return "Error: Could not parse response";
+    return "";
+}
+
+bool GeminiApi::isConfigured() const {
+    return !getApiKey().empty() && !getEndpoint().empty();
+}
+
+void GeminiApi::cancelRequest() {
+    cancelRequestFlag = true;
+    httpClient.cancelRequest();
 }
 
 void GeminiApi::cleanupThread() {
-    // Set cancel flag
-    cancelRequest = true;
-    
-    // Join thread if it's running
     if (requestThread.joinable()) {
+        {
+            std::lock_guard<std::mutex> lock(threadMutex);
+            cancelRequestFlag = true;
+        }
+        
+        httpClient.cancelRequest();
         requestThread.join();
     }
 } 

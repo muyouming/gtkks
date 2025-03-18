@@ -13,6 +13,7 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/home/debian/gtkks/src/Config.cpp" "CMakeFiles/gtkks.dir/src/Config.cpp.o" "gcc" "CMakeFiles/gtkks.dir/src/Config.cpp.o.d"
   "/home/debian/gtkks/src/DeepseekApi.cpp" "CMakeFiles/gtkks.dir/src/DeepseekApi.cpp.o" "gcc" "CMakeFiles/gtkks.dir/src/DeepseekApi.cpp.o.d"
   "/home/debian/gtkks/src/GeminiApi.cpp" "CMakeFiles/gtkks.dir/src/GeminiApi.cpp.o" "gcc" "CMakeFiles/gtkks.dir/src/GeminiApi.cpp.o.d"
+  "/home/debian/gtkks/src/HttpClient.cpp" "CMakeFiles/gtkks.dir/src/HttpClient.cpp.o" "gcc" "CMakeFiles/gtkks.dir/src/HttpClient.cpp.o.d"
   "/home/debian/gtkks/src/LLMApi.cpp" "CMakeFiles/gtkks.dir/src/LLMApi.cpp.o" "gcc" "CMakeFiles/gtkks.dir/src/LLMApi.cpp.o.d"
   "/home/debian/gtkks/src/MainWindow.cpp" "CMakeFiles/gtkks.dir/src/MainWindow.cpp.o" "gcc" "CMakeFiles/gtkks.dir/src/MainWindow.cpp.o.d"
   "/home/debian/gtkks/src/ModelSelector.cpp" "CMakeFiles/gtkks.dir/src/ModelSelector.cpp.o" "gcc" "CMakeFiles/gtkks.dir/src/ModelSelector.cpp.o.d"

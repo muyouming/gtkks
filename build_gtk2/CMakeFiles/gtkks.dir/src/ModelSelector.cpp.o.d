@@ -1346,10 +1346,4 @@ CMakeFiles/gtkks.dir/src/ModelSelector.cpp.o: \
  /usr/include/gtkmm-2.4/gtkmm/viewport.h \
  /home/debian/gtkks/include/Config.h \
  /home/debian/gtkks/include/ApiManager.h \
- /home/debian/gtkks/include/LLMApi.h /usr/include/jsoncpp/json/json.h \
- /usr/include/jsoncpp/json/config.h /usr/include/jsoncpp/json/allocator.h \
- /usr/include/c++/12/cstring /usr/include/jsoncpp/json/version.h \
- /usr/include/jsoncpp/json/json_features.h \
- /usr/include/jsoncpp/json/forwards.h /usr/include/jsoncpp/json/reader.h \
- /usr/include/jsoncpp/json/value.h /usr/include/jsoncpp/json/writer.h \
- /usr/include/c++/12/iostream
+ /home/debian/gtkks/include/LLMApi.h /usr/include/c++/12/iostream

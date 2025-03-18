@@ -1,229 +1,249 @@
 #include "DeepseekApi.h"
-#include <curlpp/cURLpp.hpp>
-#include <curlpp/Easy.hpp>
-#include <curlpp/Options.hpp>
-#include <json/json.h>
 #include <sstream>
 #include <iostream>
+#include <regex>
 
-DeepseekApi::DeepseekApi() 
-    : cancelRequest(false) {
+DeepseekApi::DeepseekApi() : cancelRequestFlag(false) {
     // Set default endpoint
     setEndpoint("https://api.deepseek.com/v1");
 }
 
 DeepseekApi::~DeepseekApi() {
+    // Cleanup thread
     cleanupThread();
 }
 
-void DeepseekApi::setApiKey(const std::string& newApiKey) {
-    std::lock_guard<std::mutex> lock(mutex);
-    apiKey = newApiKey;
+void DeepseekApi::setApiKey(const std::string& apiKey) {
+    LLMApi::setApiKey(apiKey);
 }
 
-void DeepseekApi::setEndpoint(const std::string& newEndpoint) {
-    std::lock_guard<std::mutex> lock(mutex);
-    endpoint = newEndpoint;
+void DeepseekApi::setEndpoint(const std::string& endpoint) {
+    LLMApi::setEndpoint(endpoint);
 }
 
 std::vector<std::string> DeepseekApi::getAvailableModels() {
-    // Deepseek has a fixed set of models
-    return {"deepseek-chat", "deepseek-coder"};
+    if (!availableModels.empty()) {
+        return availableModels;
+    }
+    
+    try {
+        if (getApiKey().empty()) {
+            throw std::runtime_error("API key not set");
+        }
+        
+        // Create URL
+        std::string url = getEndpoint() + "/models";
+        
+        // Set up HTTP headers
+        httpClient.clearHeaders();
+        httpClient.setHeader("Authorization", "Bearer " + getApiKey());
+        
+        // Make request
+        std::string response = httpClient.get(url);
+        
+        // Parse response
+        availableModels = parseModelsResponse(response);
+        
+        // If we didn't get any models, add some default ones
+        if (availableModels.empty()) {
+            std::cerr << "No models found in API response, using default models" << std::endl;
+            availableModels.push_back("deepseek-chat");
+            availableModels.push_back("deepseek-coder");
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "Error fetching models: " << e.what() << std::endl;
+        // Fall back to default models
+        availableModels.clear();
+        availableModels.push_back("deepseek-chat");
+        availableModels.push_back("deepseek-coder");
+    }
+    
+    return availableModels;
 }
 
 void DeepseekApi::sendMessage(const std::string& message, const std::string& model, 
-                            const std::function<void(const std::string&, bool)>& callback) {
-    // Create a single message
+                             const std::function<void(const std::string&, bool)>& callback) {
+    // Create a message vector with a single user message
     std::vector<Message> messages;
     Message userMessage;
     userMessage.role = "user";
     userMessage.content = message;
     messages.push_back(userMessage);
     
-    // Send the message
+    // Call the chat request method
     sendChatRequest(messages, model, callback);
 }
 
 void DeepseekApi::sendChatRequest(const std::vector<Message>& messages, 
-                                 const std::string& model,
-                                 const std::function<void(const std::string&, bool)>& callback) {
-    // Clean up any previous request thread
+                                const std::string& model,
+                                const std::function<void(const std::string&, bool)>& callback) {
+    // Clean up previous request
     cleanupThread();
     
     // Reset cancel flag
-    cancelRequest = false;
+    cancelRequestFlag = false;
     
     // Create a new thread for the request
     requestThread = std::thread([this, messages, model, callback]() {
         try {
-            // Check if API key is set
-            if (getApiKey().empty()) {
-                callback("Error: API key not set", true);
-                return;
-            }
-            
-            // Create request payload
-            Json::Value payload = createRequestPayload(messages, model);
-            
-            // Convert to string
-            Json::StreamWriterBuilder builder;
-            builder["indentation"] = "";
-            std::string jsonPayload = Json::writeString(builder, payload);
-            
             // Create URL
             std::string url = getEndpoint() + "/chat/completions";
             
-            // Initialize curlpp
-            curlpp::Cleanup cleanup;
-            curlpp::Easy request;
+            // Create payload
+            SimpleJson payload = createRequestPayload(messages, model);
             
-            // Set URL
-            request.setOpt(new curlpp::options::Url(url));
+            // Convert to string
+            std::string jsonPayload = payload.toJsonString();
             
-            // Set method and headers
-            std::list<std::string> headers;
-            headers.push_back("Content-Type: application/json");
-            headers.push_back("Authorization: Bearer " + getApiKey());
-            request.setOpt(new curlpp::options::HttpHeader(headers));
-            request.setOpt(new curlpp::options::Post(true));
-            request.setOpt(new curlpp::options::PostFields(jsonPayload));
-            request.setOpt(new curlpp::options::PostFieldSize(jsonPayload.length()));
-            
-            // Set up response handling
-            std::ostringstream responseStream;
-            request.setOpt(new curlpp::options::WriteStream(&responseStream));
+            // Set headers
+            httpClient.clearHeaders();
+            httpClient.setHeader("Content-Type", "application/json");
+            httpClient.setHeader("Authorization", "Bearer " + getApiKey());
             
             // Perform request
-            request.perform();
+            std::string response = httpClient.post(url, jsonPayload);
             
-            // Parse response
-            std::string response = responseStream.str();
+            // Extract the content from the response
             std::string content = parseCompletionResponse(response);
             
-            // Call callback with response
-            if (!cancelRequest) {
-                callback(content, true);
-            }
+            // Send the response to the callback
+            callback(content, true);
+            
         } catch (const std::exception& e) {
-            std::cerr << "Error sending chat request: " << e.what() << std::endl;
-            if (!cancelRequest) {
-                callback("Error: " + std::string(e.what()), true);
-            }
+            // Handle errors
+            callback("Error: " + std::string(e.what()), true);
         }
     });
 }
 
-bool DeepseekApi::isConfigured() const {
-    return !getApiKey().empty();
+std::string DeepseekApi::performHttpRequest(const std::string& url, const std::string& jsonPayload) {
+    try {
+        // Set content type if posting data
+        httpClient.clearHeaders();
+        httpClient.setHeader("Content-Type", "application/json");
+        httpClient.setHeader("Authorization", "Bearer " + getApiKey());
+        
+        if (!jsonPayload.empty()) {
+            return httpClient.post(url, jsonPayload);
+        } else {
+            return httpClient.get(url);
+        }
+    } catch (const std::exception& e) {
+        throw std::runtime_error("HTTP request failed: " + std::string(e.what()));
+    }
 }
 
-std::string DeepseekApi::getName() const {
-    return "Deepseek";
-}
-
-Json::Value DeepseekApi::createRequestPayload(const std::vector<Message>& messages, const std::string& model) {
-    Json::Value payload;
+SimpleJson DeepseekApi::createRequestPayload(const std::vector<Message>& messages, const std::string& model) {
+    SimpleJson payload;
     
-    // Set model
-    payload["model"] = model;
+    // Add model
+    payload.addToObject("model", SimpleJson(model));
     
     // Add messages
-    Json::Value jsonMessages(Json::arrayValue);
-    for (const auto& message : messages) {
-        Json::Value jsonMessage;
-        jsonMessage["role"] = message.role;
-        jsonMessage["content"] = message.content;
-        jsonMessages.append(jsonMessage);
-    }
-    payload["messages"] = jsonMessages;
+    SimpleJson jsonMessages;
     
-    // Add parameters
-    payload["temperature"] = 0.7;
-    payload["max_tokens"] = 4000;
-    payload["stream"] = false;
+    for (const auto& message : messages) {
+        SimpleJson jsonMessage;
+        jsonMessage.addToObject("role", SimpleJson(message.role));
+        jsonMessage.addToObject("content", SimpleJson(message.content));
+        
+        jsonMessages.addToArray(jsonMessage);
+    }
+    
+    payload.addToObject("messages", jsonMessages);
+    
+    // Add other parameters
+    payload.addToObject("temperature", SimpleJson(0.7));
+    payload.addToObject("max_tokens", SimpleJson(800.0));
     
     return payload;
 }
 
-std::string DeepseekApi::performHttpRequest(const std::string& url, const std::string& jsonPayload) {
-    try {
-        // Initialize curlpp
-        curlpp::Cleanup cleanup;
-        curlpp::Easy request;
-        
-        // Set URL
-        request.setOpt(new curlpp::options::Url(url));
-        
-        // Set method and headers if needed
-        if (!jsonPayload.empty()) {
-            std::list<std::string> headers;
-            headers.push_back("Content-Type: application/json");
-            headers.push_back("Authorization: Bearer " + getApiKey());
-            request.setOpt(new curlpp::options::HttpHeader(headers));
-            request.setOpt(new curlpp::options::Post(true));
-            request.setOpt(new curlpp::options::PostFields(jsonPayload));
-            request.setOpt(new curlpp::options::PostFieldSize(jsonPayload.length()));
-        }
-        
-        // Set up response handling
-        std::ostringstream responseStream;
-        request.setOpt(new curlpp::options::WriteStream(&responseStream));
-        
-        // Perform request
-        request.perform();
-        
-        // Return response
-        return responseStream.str();
-    } catch (const std::exception& e) {
-        std::cerr << "HTTP request error: " << e.what() << std::endl;
-        throw;
-    }
-}
-
 std::vector<std::string> DeepseekApi::parseModelsResponse(const std::string& response) {
-    // Not used for Deepseek as we return a fixed set of models
-    return {};
+    std::vector<std::string> models;
+    
+    try {
+        // Simple parsing - look for model IDs in the response
+        std::regex modelRegex("\"id\"\\s*:\\s*\"([^\"]+)\"");
+        
+        auto begin = std::sregex_iterator(response.begin(), response.end(), modelRegex);
+        auto end = std::sregex_iterator();
+        
+        for (std::sregex_iterator i = begin; i != end; ++i) {
+            std::smatch match = *i;
+            if (match.size() > 1) {
+                std::string modelId = match[1].str();
+                // Only include deepseek models
+                if (modelId.find("deepseek") != std::string::npos) {
+                    models.push_back(modelId);
+                }
+            }
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "Error parsing models: " << e.what() << std::endl;
+    }
+    
+    return models;
 }
 
 std::string DeepseekApi::parseCompletionResponse(const std::string& response) {
     try {
-        // Parse JSON
-        Json::Value root;
-        Json::CharReaderBuilder builder;
-        std::string errs;
-        std::istringstream responseStream(response);
-        if (!Json::parseFromStream(builder, responseStream, &root, &errs)) {
-            std::cerr << "Failed to parse completion response: " << errs << std::endl;
-            return "Error parsing response";
-        }
+        // Simple parsing - look for the content in the response
+        std::regex contentRegex("\"content\"\\s*:\\s*\"((?:\\\\.|[^\"])*?)\"");
+        std::smatch match;
         
-        // Check for errors
-        if (root.isMember("error")) {
-            if (root["error"].isMember("message")) {
-                return "Error: " + root["error"]["message"].asString();
+        if (std::regex_search(response, match, contentRegex) && match.size() > 1) {
+            std::string content = match[1].str();
+            
+            // Unescape JSON string
+            std::string unescaped;
+            for (size_t i = 0; i < content.length(); ++i) {
+                if (content[i] == '\\' && i + 1 < content.length()) {
+                    if (content[i + 1] == 'n') {
+                        unescaped += '\n';
+                    } else if (content[i + 1] == 'r') {
+                        unescaped += '\r';
+                    } else if (content[i + 1] == 't') {
+                        unescaped += '\t';
+                    } else if (content[i + 1] == '\"') {
+                        unescaped += '\"';
+                    } else if (content[i + 1] == '\\') {
+                        unescaped += '\\';
+                    } else {
+                        unescaped += content[i + 1];
+                    }
+                    i++; // Skip the escaped character
+                } else {
+                    unescaped += content[i];
+                }
             }
-            return "Unknown API error";
-        }
-        
-        // Extract message content
-        if (root.isMember("choices") && root["choices"].isArray() && 
-            root["choices"].size() > 0 && root["choices"][0].isMember("message") && 
-            root["choices"][0]["message"].isMember("content")) {
-            return root["choices"][0]["message"]["content"].asString();
+            
+            return unescaped;
         }
     } catch (const std::exception& e) {
-        std::cerr << "Error parsing completion: " << e.what() << std::endl;
+        std::cerr << "Error parsing completion response: " << e.what() << std::endl;
     }
     
-    return "Error: Could not parse response";
+    return "";
+}
+
+bool DeepseekApi::isConfigured() const {
+    return !getApiKey().empty() && !getEndpoint().empty();
+}
+
+void DeepseekApi::cancelRequest() {
+    cancelRequestFlag = true;
+    httpClient.cancelRequest();
 }
 
 void DeepseekApi::cleanupThread() {
-    // Set cancel flag
-    cancelRequest = true;
-    
-    // Join thread if it's running
     if (requestThread.joinable()) {
+        {
+            std::lock_guard<std::mutex> lock(threadMutex);
+            cancelRequestFlag = true;
+        }
+        
+        httpClient.cancelRequest();
         requestThread.join();
     }
 } 

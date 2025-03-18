@@ -3,12 +3,67 @@
 #include <string>
 #include <vector>
 #include <functional>
-#include <json/json.h>
+#include <map>
 
 // Message structure for chat requests
 struct Message {
     std::string role;
     std::string content;
+};
+
+// Simple JSON structure implementation using standard C++
+class SimpleJson {
+public:
+    enum Type { Null, Boolean, Number, String, Array, Object };
+    
+    SimpleJson() : type(Null) {}
+    SimpleJson(bool value) : type(Boolean), boolValue(value) {}
+    SimpleJson(double value) : type(Number), numberValue(value) {}
+    SimpleJson(const std::string& value) : type(String), stringValue(value) {}
+    
+    Type getType() const { return type; }
+    
+    bool asBool() const { return boolValue; }
+    double asNumber() const { return numberValue; }
+    std::string asString() const { return stringValue; }
+    
+    void addToArray(const SimpleJson& value) {
+        if (type != Array) {
+            type = Array;
+            arrayValues.clear();
+        }
+        arrayValues.push_back(value);
+    }
+    
+    void addToObject(const std::string& key, const SimpleJson& value) {
+        if (type != Object) {
+            type = Object;
+            objectValues.clear();
+        }
+        objectValues[key] = value;
+    }
+    
+    bool hasKey(const std::string& key) const {
+        return type == Object && objectValues.find(key) != objectValues.end();
+    }
+    
+    const SimpleJson& operator[](const std::string& key) const {
+        static SimpleJson nullValue;
+        if (type != Object) return nullValue;
+        auto it = objectValues.find(key);
+        if (it != objectValues.end()) return it->second;
+        return nullValue;
+    }
+    
+    std::string toJsonString() const;
+    
+private:
+    Type type;
+    bool boolValue = false;
+    double numberValue = 0.0;
+    std::string stringValue;
+    std::vector<SimpleJson> arrayValues;
+    std::map<std::string, SimpleJson> objectValues;
 };
 
 // Base class for LLM API implementations

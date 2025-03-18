@@ -9,6 +9,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/gtkks.dir/src/DeepseekApi.cpp.o.d"
   "CMakeFiles/gtkks.dir/src/GeminiApi.cpp.o"
   "CMakeFiles/gtkks.dir/src/GeminiApi.cpp.o.d"
+  "CMakeFiles/gtkks.dir/src/HttpClient.cpp.o"
+  "CMakeFiles/gtkks.dir/src/HttpClient.cpp.o.d"
   "CMakeFiles/gtkks.dir/src/LLMApi.cpp.o"
   "CMakeFiles/gtkks.dir/src/LLMApi.cpp.o.d"
   "CMakeFiles/gtkks.dir/src/MainWindow.cpp.o"

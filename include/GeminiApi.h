@@ -1,41 +1,65 @@
 #pragma once
 
 #include "LLMApi.h"
+#include "HttpClient.h"
 #include <string>
 #include <vector>
-#include <thread>
-#include <mutex>
-#include <atomic>
 #include <functional>
+#include <mutex>
+#include <thread>
+#include <atomic>
 
 class GeminiApi : public LLMApi {
 public:
     GeminiApi();
-    ~GeminiApi() override;
+    virtual ~GeminiApi();
 
-    // LLMApi interface implementation
+    // Set API key
     void setApiKey(const std::string& apiKey) override;
+    
+    // Set API endpoint
     void setEndpoint(const std::string& endpoint) override;
+    
+    // Get available models
     std::vector<std::string> getAvailableModels() override;
-    void sendMessage(const std::string& message, const std::string& model, 
-                   const std::function<void(const std::string&, bool)>& callback) override;
+    
+    // Send a chat completion request
     void sendChatRequest(const std::vector<Message>& messages, 
                         const std::string& model,
                         const std::function<void(const std::string&, bool)>& callback) override;
+    
+    // Check if API is properly configured
     bool isConfigured() const override;
-    std::string getName() const override;
+    
+    // Get API name
+    std::string getName() const override {
+        return "Gemini";
+    }
+
+    // Override base class methods
+    virtual void sendMessage(const std::string& message, const std::string& model, 
+                            const std::function<void(const std::string&, bool)>& callback) override;
+
+    // Cancel ongoing requests
+    void cancelRequest() override;
 
 private:
-    std::string apiKey;
-    std::string endpoint;
-    std::mutex mutex;
-    std::atomic<bool> cancelRequest;
-    std::thread requestThread;
-
+    // HTTP client
+    HttpClient httpClient;
+    
+    // Available models
+    std::vector<std::string> availableModels;
+    
     // Helper methods
-    Json::Value createRequestPayload(const std::vector<Message>& messages, const std::string& model);
+    SimpleJson createRequestPayload(const std::vector<Message>& messages, const std::string& model);
     std::string performHttpRequest(const std::string& url, const std::string& jsonPayload);
     std::vector<std::string> parseModelsResponse(const std::string& response);
     std::string parseCompletionResponse(const std::string& response);
+
+    // Thread management
+    std::mutex threadMutex;
+    std::atomic<bool> cancelRequestFlag;
+    std::thread requestThread;
+    
     void cleanupThread();
 }; 
