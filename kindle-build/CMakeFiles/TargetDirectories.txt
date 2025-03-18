@@ -1,0 +1,7 @@
+/Users/muyouming/Dev/gtkks/kindle-build/CMakeFiles/gtkks.dir
+/Users/muyouming/Dev/gtkks/kindle-build/CMakeFiles/edit_cache.dir
+/Users/muyouming/Dev/gtkks/kindle-build/CMakeFiles/rebuild_cache.dir
+/Users/muyouming/Dev/gtkks/kindle-build/CMakeFiles/list_install_components.dir
+/Users/muyouming/Dev/gtkks/kindle-build/CMakeFiles/install.dir
+/Users/muyouming/Dev/gtkks/kindle-build/CMakeFiles/install/local.dir
+/Users/muyouming/Dev/gtkks/kindle-build/CMakeFiles/install/strip.dir

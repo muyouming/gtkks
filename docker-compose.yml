@@ -1,0 +1,13 @@
+services:
+  kindle-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+      - ./kindle-build:/app/kindle-build
+    command: /app/build-kindle.sh
+    environment:
+      - DEBIAN_FRONTEND=noninteractive
+    tty: true
+    stdin_open: true 

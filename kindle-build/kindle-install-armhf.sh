@@ -1,9 +1,9 @@
 #!/bin/sh
 
-# GTKKS Kindle Installation Script
+# GTKKS Kindle Scribe Installation Script
 # This script should be run on the Kindle device
 
-echo "=== GTKKS Kindle Installation Script ==="
+echo "=== GTKKS Kindle Scribe (armhf) Installation Script ==="
 
 # Check if we're running on a Kindle
 if [ ! -d "/mnt/us" ]; then
@@ -19,26 +19,26 @@ mkdir -p /mnt/us/extensions/gtkks/icons
 
 # Extract application files
 echo "Extracting application files..."
-if [ -f "gtkks-kindle.tar.gz" ]; then
-    tar -xzvf gtkks-kindle.tar.gz -C /mnt/us/
+if [ -f "gtkks-kindle-armhf.tar.gz" ]; then
+    tar -xzvf gtkks-kindle-armhf.tar.gz -C /mnt/us/
 else
-    echo "Error: gtkks-kindle.tar.gz not found."
+    echo "Error: gtkks-kindle-armhf.tar.gz not found."
     exit 1
 fi
 
 # Create desktop shortcut
 echo "Creating desktop shortcut..."
-cat > /mnt/us/extensions/gtkks/bin/gtkks.sh << 'EOF'
+cat > /mnt/us/extensions/gtkks/bin/gtkks.sh << 'INNEREOF'
 #!/bin/sh
 cd /mnt/us/gtkks-kindle
 ./gtkks.sh
-EOF
+INNEREOF
 
 chmod +x /mnt/us/extensions/gtkks/bin/gtkks.sh
 
 # Create menu item
 echo "Creating menu item..."
-cat > /mnt/us/extensions/gtkks/menu.json << 'EOF'
+cat > /mnt/us/extensions/gtkks/menu.json << 'INNEREOF'
 {
     "items": [
         {
@@ -48,7 +48,7 @@ cat > /mnt/us/extensions/gtkks/menu.json << 'EOF'
         }
     ]
 }
-EOF
+INNEREOF
 
 # Create icon
 echo "Creating icon..."
@@ -56,4 +56,4 @@ if [ -f "/mnt/us/gtkks-kindle/resources/kindle/icon.svg" ]; then
     cp /mnt/us/gtkks-kindle/resources/kindle/icon.svg /mnt/us/extensions/gtkks/icons/gtkks.svg
 fi
 
-echo "Installation complete. Restart your Kindle to see GTKKS in the menu." 
+echo "Installation complete. Restart your Kindle to see GTKKS in the menu."

@@ -5,11 +5,11 @@ set(CMAKE_SYSTEM_NAME Linux)
 set(CMAKE_SYSTEM_PROCESSOR arm)
 
 # Specify the cross compiler
-set(CMAKE_C_COMPILER arm-kindle-linux-gnueabi-gcc)
-set(CMAKE_CXX_COMPILER arm-kindle-linux-gnueabi-g++)
+set(CMAKE_C_COMPILER arm-linux-gnueabi-gcc)
+set(CMAKE_CXX_COMPILER arm-linux-gnueabi-g++)
 
 # Where to look for the target environment
-set(CMAKE_FIND_ROOT_PATH /opt/kindle-tc/arm-kindle-linux-gnueabi/sysroot)
+set(CMAKE_FIND_ROOT_PATH /usr/arm-linux-gnueabi)
 
 # Search for programs only in the build host directories
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)

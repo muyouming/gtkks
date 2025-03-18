@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <rect width="256" height="256" fill="white" rx="32" ry="32"/>
+  <g transform="translate(32, 32)">
+    <!-- Chat bubble -->
+    <path d="M 96 16 C 44 16 0 48 0 96 C 0 144 44 176 96 176 C 100 176 104 176 108 176 L 160 192 L 144 144 C 172 128 192 112 192 96 C 192 48 148 16 96 16 z" fill="black"/>
+    <!-- Text -->
+    <text x="96" y="104" font-family="Sans" font-size="48" text-anchor="middle" fill="white">LLM</text>
+  </g>
+</svg> 
