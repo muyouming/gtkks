@@ -6,105 +6,87 @@
 #include <gtkmm/messagedialog.h>
 #include <gtkmm/aboutdialog.h>
 #include <gtkmm/entry.h>
-#include <gtkmm/grid.h>
+#include <gtkmm/table.h>
 #include <gtkmm/label.h>
 #include <gtkmm/dialog.h>
 #include <gtkmm/stock.h>
-#include <gio/gio.h>
 
 MainWindow::MainWindow()
     : Gtk::Window(),
-      mainBox(Gtk::ORIENTATION_VERTICAL, 0),
       settingsDialog("Settings", *this, true),
       aboutDialog() {
     
     // Set up window
     set_title("GTKKS - GTK LLM Client");
     set_default_size(800, 600);
-    set_border_width(0);
+    set_border_width(10);
     
-    // Set up header bar
-    headerBar.set_title("GTKKS - GTK LLM Client");
-    headerBar.set_show_close_button(true);
+    // Create menu bar
+    menuBar.items().push_back(fileMenuItem);
+    menuBar.items().push_back(helpMenuItem);
     
-    // Create menu button
-    menuButton.set_image_from_icon_name("open-menu-symbolic", Gtk::ICON_SIZE_BUTTON);
+    fileMenuItem.set_label("_File");
+    fileMenuItem.set_use_underline(true);
+    fileMenuItem.set_submenu(fileMenu);
     
-    // Create menu
-    menuPopover.set_relative_to(menuButton);
-    menuBox.set_orientation(Gtk::ORIENTATION_VERTICAL);
-    menuBox.set_margin_start(10);
-    menuBox.set_margin_end(10);
-    menuBox.set_margin_top(10);
-    menuBox.set_margin_bottom(10);
-    menuBox.set_spacing(5);
+    helpMenuItem.set_label("_Help");
+    helpMenuItem.set_use_underline(true);
+    helpMenuItem.set_submenu(helpMenu);
     
-    // Add menu items
-    menuBox.add(settingsButton);
-    menuBox.add(saveButton);
-    menuBox.add(loadButton);
-    menuBox.add(aboutButton);
+    // Add items to file menu
+    fileMenu.items().push_back(settingsMenuItem);
+    fileMenu.items().push_back(saveMenuItem);
+    fileMenu.items().push_back(loadMenuItem);
+    fileMenu.items().push_back(Gtk::Menu_Helpers::SeparatorElem());
+    fileMenu.items().push_back(quitMenuItem);
+    
+    // Add items to help menu
+    helpMenu.items().push_back(aboutMenuItem);
     
     // Set up menu items
-    settingsButton.set_label("Settings");
-    settingsButton.set_halign(Gtk::ALIGN_START);
-    saveButton.set_label("Save Chat");
-    saveButton.set_halign(Gtk::ALIGN_START);
-    loadButton.set_label("Load Chat");
-    loadButton.set_halign(Gtk::ALIGN_START);
-    aboutButton.set_label("About");
-    aboutButton.set_halign(Gtk::ALIGN_START);
-    
-    // Add menu box to popover
-    menuPopover.add(menuBox);
-    menuButton.set_popover(menuPopover);
-    
-    // Add menu button to header bar
-    headerBar.pack_end(menuButton);
+    settingsMenuItem.set_label("_Settings");
+    settingsMenuItem.set_use_underline(true);
+    saveMenuItem.set_label("_Save Chat");
+    saveMenuItem.set_use_underline(true);
+    loadMenuItem.set_label("_Load Chat");
+    loadMenuItem.set_use_underline(true);
+    quitMenuItem.set_label("_Quit");
+    quitMenuItem.set_use_underline(true);
+    aboutMenuItem.set_label("_About");
+    aboutMenuItem.set_use_underline(true);
     
     // Set up chat view
-    chatView.set_margin_start(10);
-    chatView.set_margin_end(10);
-    chatView.set_margin_top(10);
-    chatView.set_margin_bottom(10);
-    chatView.set_vexpand(true);
+    chatView.set_border_width(10);
     
     // Add widgets to main box
-    mainBox.pack_start(chatView, true, true, 0);
+    mainBox.pack_start(menuBar, Gtk::PACK_SHRINK);
+    mainBox.pack_start(chatView);
     
     // Set up settings dialog
     settingsDialog.set_default_size(400, 300);
     settingsDialog.set_title("Settings");
-    settingsDialog.add_button("Close", Gtk::RESPONSE_CLOSE);
-    settingsDialog.get_content_area()->add(modelSelector);
-    settingsDialog.get_content_area()->set_spacing(10);
-    settingsDialog.get_content_area()->set_margin_start(10);
-    settingsDialog.get_content_area()->set_margin_end(10);
-    settingsDialog.get_content_area()->set_margin_top(10);
-    settingsDialog.get_content_area()->set_margin_bottom(10);
+    settingsDialog.add_button(Gtk::Stock::CLOSE, Gtk::RESPONSE_CLOSE);
+    settingsDialog.get_vbox()->add(modelSelector);
+    settingsDialog.get_vbox()->set_spacing(10);
+    settingsDialog.get_vbox()->set_border_width(10);
     
     // Set up about dialog
-    aboutDialog.set_program_name("GTKKS");
+    aboutDialog.set_name("GTKKS");
     aboutDialog.set_version("1.0.0");
     aboutDialog.set_copyright("Copyright © 2023");
     aboutDialog.set_comments("A GTK client for LLM services");
-    aboutDialog.set_license_type(Gtk::LICENSE_GPL_3_0);
     aboutDialog.set_website("https://github.com/yourusername/gtkks");
     aboutDialog.set_website_label("GitHub Repository");
-    aboutDialog.set_authors({"Your Name"});
-    
-    // Set window titlebar
-    set_titlebar(headerBar);
     
     // Add main box to window
     add(mainBox);
     
     // Connect signals
-    settingsButton.signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::onSettingsClicked));
-    saveButton.signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::onSaveClicked));
-    loadButton.signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::onLoadClicked));
-    aboutButton.signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::onAboutClicked));
-    menuButton.signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::onMenuButtonClicked));
+    settingsMenuItem.signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onSettingsClicked));
+    saveMenuItem.signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onSaveClicked));
+    loadMenuItem.signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onLoadClicked));
+    aboutMenuItem.signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onAboutClicked));
+    quitMenuItem.signal_activate().connect(sigc::mem_fun(*this, &MainWindow::onQuitClicked));
     modelSelector.signal_api_config_changed().connect(sigc::mem_fun(*this, &MainWindow::onApiConfigChanged));
     
     // Load last used model
@@ -112,15 +94,9 @@ MainWindow::MainWindow()
     
     // Show all widgets
     show_all_children();
-    menuBox.show_all();
 }
 
 MainWindow::~MainWindow() {
-}
-
-void MainWindow::onMenuButtonClicked() {
-    menuPopover.show_all();
-    menuPopover.popup();
 }
 
 void MainWindow::onSettingsClicked() {
@@ -139,18 +115,18 @@ void MainWindow::onSaveClicked() {
     // Create file chooser dialog
     Gtk::FileChooserDialog dialog("Save Chat", Gtk::FILE_CHOOSER_ACTION_SAVE);
     dialog.set_transient_for(*this);
-    dialog.add_button("Cancel", Gtk::RESPONSE_CANCEL);
-    dialog.add_button("Save", Gtk::RESPONSE_OK);
+    dialog.add_button(Gtk::Stock::CANCEL, Gtk::RESPONSE_CANCEL);
+    dialog.add_button(Gtk::Stock::SAVE, Gtk::RESPONSE_OK);
     
     // Add filters
-    auto filter_json = Gtk::FileFilter::create();
-    filter_json->set_name("JSON files");
-    filter_json->add_pattern("*.json");
+    Gtk::FileFilter filter_json;
+    filter_json.set_name("JSON files");
+    filter_json.add_pattern("*.json");
     dialog.add_filter(filter_json);
     
-    auto filter_any = Gtk::FileFilter::create();
-    filter_any->set_name("Any files");
-    filter_any->add_pattern("*");
+    Gtk::FileFilter filter_any;
+    filter_any.set_name("Any files");
+    filter_any.add_pattern("*");
     dialog.add_filter(filter_any);
     
     // Set default filename
@@ -170,18 +146,18 @@ void MainWindow::onLoadClicked() {
     // Create file chooser dialog
     Gtk::FileChooserDialog dialog("Load Chat", Gtk::FILE_CHOOSER_ACTION_OPEN);
     dialog.set_transient_for(*this);
-    dialog.add_button("Cancel", Gtk::RESPONSE_CANCEL);
-    dialog.add_button("Open", Gtk::RESPONSE_OK);
+    dialog.add_button(Gtk::Stock::CANCEL, Gtk::RESPONSE_CANCEL);
+    dialog.add_button(Gtk::Stock::OPEN, Gtk::RESPONSE_OK);
     
     // Add filters
-    auto filter_json = Gtk::FileFilter::create();
-    filter_json->set_name("JSON files");
-    filter_json->add_pattern("*.json");
+    Gtk::FileFilter filter_json;
+    filter_json.set_name("JSON files");
+    filter_json.add_pattern("*.json");
     dialog.add_filter(filter_json);
     
-    auto filter_any = Gtk::FileFilter::create();
-    filter_any->set_name("Any files");
-    filter_any->add_pattern("*");
+    Gtk::FileFilter filter_any;
+    filter_any.set_name("Any files");
+    filter_any.add_pattern("*");
     dialog.add_filter(filter_any);
     
     // Show dialog
@@ -239,5 +215,5 @@ void MainWindow::updateChatView() {
 }
 
 void MainWindow::onQuitClicked() {
-    close();
+    hide();
 } 

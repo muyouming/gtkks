@@ -1,0 +1,7 @@
+/home/debian/gtkks/build_gtk2/CMakeFiles/gtkks.dir
+/home/debian/gtkks/build_gtk2/CMakeFiles/edit_cache.dir
+/home/debian/gtkks/build_gtk2/CMakeFiles/rebuild_cache.dir
+/home/debian/gtkks/build_gtk2/CMakeFiles/list_install_components.dir
+/home/debian/gtkks/build_gtk2/CMakeFiles/install.dir
+/home/debian/gtkks/build_gtk2/CMakeFiles/install/local.dir
+/home/debian/gtkks/build_gtk2/CMakeFiles/install/strip.dir

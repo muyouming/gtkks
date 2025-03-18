@@ -1,6 +1,8 @@
 # GTKKS - GTK LLM Client
 
-A GTK3-based GUI client for Ollama and other LLM services written in C++.
+A GTK-based GUI client for Ollama and other LLM services written in C++.
+
+Available in both GTK2 and GTK3 versions.
 
 ## Features
 
@@ -17,8 +19,16 @@ A GTK3-based GUI client for Ollama and other LLM services written in C++.
 
 ## Dependencies
 
+### For GTK3 version
 - C++17 compiler
 - GTK3 / gtkmm-3.0
+- libcurl / curlpp
+- jsoncpp
+- CMake (3.10 or higher)
+
+### For GTK2 version
+- C++17 compiler
+- GTK2 / gtkmm-2.4
 - libcurl / curlpp
 - jsoncpp
 - CMake (3.10 or higher)
@@ -28,9 +38,13 @@ A GTK3-based GUI client for Ollama and other LLM services written in C++.
 ### Ubuntu/Debian
 
 ```bash
-# Install dependencies
+# For GTK3 version
 sudo apt update
 sudo apt install build-essential cmake pkg-config libgtkmm-3.0-dev libcurlpp-dev libjsoncpp-dev
+
+# For GTK2 version
+sudo apt update
+sudo apt install build-essential cmake pkg-config libgtkmm-2.4-dev libcurlpp-dev libjsoncpp-dev
 ```
 
 ### macOS with Homebrew
@@ -39,11 +53,16 @@ sudo apt install build-essential cmake pkg-config libgtkmm-3.0-dev libcurlpp-dev
 # Install Homebrew if not already installed
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-# Install dependencies
+# For GTK3 version
 brew install cmake gtkmm3 curlpp jsoncpp
+
+# For GTK2 version
+brew install cmake gtkmm curlpp jsoncpp
 ```
 
 ## Building
+
+### GTK3 Version (Default)
 
 ```bash
 # Clone the repository
@@ -67,10 +86,25 @@ chmod +x build.sh
 ./build.sh
 ```
 
+### GTK2 Version
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/gtkks.git
+cd gtkks
+
+# Build
+./build_gtk2.sh
+
+# Run
+cd build_gtk2
+./gtkks
+```
+
 ## Usage
 
 1. Launch the application
-2. Set up your API keys in the settings (click the gear icon)
+2. Set up your API keys in the settings (gear icon in GTK3 or Settings menu in GTK2)
 3. Select the LLM service you want to use from the dropdown
 4. Choose a model
 5. Start chatting!

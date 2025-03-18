@@ -55,6 +55,10 @@ std::vector<std::string> ApiManager::getAvailableApis() const {
     return result;
 }
 
+std::vector<std::string> ApiManager::getAvailableApiNames() const {
+    return getAvailableApis();
+}
+
 void ApiManager::setApiKey(const std::string& apiName, const std::string& apiKey) {
     auto api = getApi(apiName);
     if (api) {

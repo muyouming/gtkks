@@ -3,7 +3,8 @@
 #include <iostream>
 
 ModelSelector::ModelSelector() : 
-    Gtk::Box(Gtk::ORIENTATION_VERTICAL, 0) {
+    Gtk::VBox(false, 0),
+    table(5, 2, false) {
     
     // Get config singleton
     Config& configRef = Config::getInstance();
@@ -12,52 +13,49 @@ ModelSelector::ModelSelector() :
     // Set up UI
     set_border_width(10);
     
-    // Create grid
-    grid.set_column_spacing(10);
-    grid.set_row_spacing(10);
+    // Configure table
+    table.set_col_spacings(10);
+    table.set_row_spacings(10);
     
     // Add labels
     apiLabel.set_text("API:");
-    apiLabel.set_halign(Gtk::ALIGN_START);
-    grid.attach(apiLabel, 0, 0, 1, 1);
+    apiLabel.set_alignment(0, 0.5);
+    table.attach(apiLabel, 0, 1, 0, 1, Gtk::FILL, Gtk::FILL);
     
     modelLabel.set_text("Model:");
-    modelLabel.set_halign(Gtk::ALIGN_START);
-    grid.attach(modelLabel, 0, 1, 1, 1);
+    modelLabel.set_alignment(0, 0.5);
+    table.attach(modelLabel, 0, 1, 1, 2, Gtk::FILL, Gtk::FILL);
     
     apiKeyLabel.set_text("API Key:");
-    apiKeyLabel.set_halign(Gtk::ALIGN_START);
-    grid.attach(apiKeyLabel, 0, 2, 1, 1);
+    apiKeyLabel.set_alignment(0, 0.5);
+    table.attach(apiKeyLabel, 0, 1, 2, 3, Gtk::FILL, Gtk::FILL);
     
     endpointLabel.set_text("Endpoint:");
-    endpointLabel.set_halign(Gtk::ALIGN_START);
-    grid.attach(endpointLabel, 0, 3, 1, 1);
+    endpointLabel.set_alignment(0, 0.5);
+    table.attach(endpointLabel, 0, 1, 3, 4, Gtk::FILL, Gtk::FILL);
     
     // Add ComboBoxes
     apiListStore = Gtk::ListStore::create(apiColumns);
     apiComboBox.set_model(apiListStore);
     apiComboBox.pack_start(apiColumns.name);
-    grid.attach(apiComboBox, 1, 0, 1, 1);
+    table.attach(apiComboBox, 1, 2, 0, 1, Gtk::FILL | Gtk::EXPAND, Gtk::FILL);
     
     modelListStore = Gtk::ListStore::create(modelColumns);
     modelComboBox.set_model(modelListStore);
     modelComboBox.pack_start(modelColumns.name);
-    grid.attach(modelComboBox, 1, 1, 1, 1);
+    table.attach(modelComboBox, 1, 2, 1, 2, Gtk::FILL | Gtk::EXPAND, Gtk::FILL);
     
     // Add entries
-    apiKeyEntry.set_hexpand(true);
-    grid.attach(apiKeyEntry, 1, 2, 1, 1);
+    table.attach(apiKeyEntry, 1, 2, 2, 3, Gtk::FILL | Gtk::EXPAND, Gtk::FILL);
     
-    endpointEntry.set_hexpand(true);
-    grid.attach(endpointEntry, 1, 3, 1, 1);
+    table.attach(endpointEntry, 1, 2, 3, 4, Gtk::FILL | Gtk::EXPAND, Gtk::FILL);
     
     // Add save button
     saveButton.set_label("Save");
-    saveButton.set_halign(Gtk::ALIGN_END);
-    grid.attach(saveButton, 1, 4, 1, 1);
+    table.attach(saveButton, 1, 2, 4, 5, Gtk::FILL, Gtk::FILL, 0, 0);
     
-    // Add grid to box
-    pack_start(grid, true, true, 0);
+    // Add table to box
+    pack_start(table, true, true, 0);
     
     // Connect signals
     apiComboBox.signal_changed().connect(sigc::mem_fun(*this, &ModelSelector::onApiChanged));
@@ -148,53 +146,57 @@ void ModelSelector::onSaveClicked() {
     // Save config
     config->save();
     
-    // Hide dialog
-    hide();
-    
     // Emit signal
     m_signal_api_config_changed.emit();
 }
 
 void ModelSelector::populateApiComboBox() {
-    // Clear existing items
+    // Clear list store
     apiListStore->clear();
     
-    // Get API manager
-    ApiManager& apiManager = ApiManager::getInstance();
-    
-    // Add APIs
-    for (const auto& apiName : apiManager.getAvailableApis()) {
+    // Add all available APIs
+    auto& apiManager = ApiManager::getInstance();
+    for (const auto& apiName : apiManager.getAvailableApiNames()) {
         Gtk::TreeModel::Row row = *(apiListStore->append());
-        row[apiColumns.name] = apiName;
+        row[apiColumns.name] = Glib::ustring(apiName);
     }
     
-    // Select first API
-    if (apiListStore->children().size() > 0) {
-        apiComboBox.set_active(0);
+    // Select first item
+    if (!apiListStore->children().empty()) {
+        apiComboBox.set_active(apiListStore->children().begin());
     }
 }
 
 void ModelSelector::populateModelComboBox(const std::string& apiName) {
-    // Clear existing items
+    // Clear list store
     modelListStore->clear();
     
-    // Get API manager
-    ApiManager& apiManager = ApiManager::getInstance();
-    
-    // Get API
+    // Get available models for this API
+    auto& apiManager = ApiManager::getInstance();
     auto api = apiManager.getApi(apiName);
-    if (!api) {
-        return;
-    }
     
-    // Add models
-    for (const auto& modelName : api->getAvailableModels()) {
-        Gtk::TreeModel::Row row = *(modelListStore->append());
-        row[modelColumns.name] = modelName;
-    }
-    
-    // Select first model
-    if (modelListStore->children().size() > 0) {
-        modelComboBox.set_active(0);
+    if (api) {
+        for (const auto& modelName : api->getAvailableModels()) {
+            Gtk::TreeModel::Row row = *(modelListStore->append());
+            row[modelColumns.name] = Glib::ustring(modelName);
+            
+            // If this is the model we want to select
+            if (modelName == this->modelName) {
+                modelComboBox.set_active(modelListStore->children().size() - 1);
+            }
+        }
+        
+        // If no model was selected, select the first one
+        if (!modelComboBox.get_active() && !modelListStore->children().empty()) {
+            modelComboBox.set_active(modelListStore->children().begin());
+            
+            // Update model name
+            auto iter = modelComboBox.get_active();
+            if (iter) {
+                Gtk::TreeModel::Row modelRow = *iter;
+                Glib::ustring modelUstr = modelRow[modelColumns.name];
+                this->modelName = modelUstr.raw();
+            }
+        }
     }
 } 

@@ -4,9 +4,9 @@
 #include <json/json.h>
 
 ChatView::ChatView()
-    : Gtk::Box(Gtk::ORIENTATION_VERTICAL, 10),
-      inputBox(Gtk::ORIENTATION_HORIZONTAL, 5),
-      buttonBox(Gtk::ORIENTATION_HORIZONTAL, 5),
+    : Gtk::VBox(false, 10),
+      inputBox(false, 5),
+      buttonBox(false, 5),
       isFirstResponseChunk(true),
       currentResponseText("") {
     
@@ -14,10 +14,7 @@ ChatView::ChatView()
     chatTextView.set_editable(false);
     chatTextView.set_wrap_mode(Gtk::WRAP_WORD_CHAR);
     chatTextView.set_cursor_visible(false);
-    chatTextView.set_left_margin(10);
-    chatTextView.set_right_margin(10);
-    chatTextView.set_top_margin(10);
-    chatTextView.set_bottom_margin(10);
+    chatTextView.set_border_width(10);
     
     // Set up chat scrolled window
     chatScrolledWindow.set_policy(Gtk::POLICY_AUTOMATIC, Gtk::POLICY_AUTOMATIC);
@@ -26,10 +23,7 @@ ChatView::ChatView()
     
     // Set up input text view
     inputTextView.set_wrap_mode(Gtk::WRAP_WORD_CHAR);
-    inputTextView.set_left_margin(10);
-    inputTextView.set_right_margin(10);
-    inputTextView.set_top_margin(10);
-    inputTextView.set_bottom_margin(10);
+    inputTextView.set_border_width(10);
     inputTextView.set_size_request(-1, 100);
     
     // Set up buttons

@@ -5,7 +5,7 @@
 #include <utility>
 #include "Config.h"
 
-class ModelSelector : public Gtk::Box {
+class ModelSelector : public Gtk::VBox {
 public:
     ModelSelector();
     virtual ~ModelSelector();
@@ -28,7 +28,7 @@ private:
     std::string modelName;
     
     // UI components
-    Gtk::Grid grid;
+    Gtk::Table table;
     
     // Labels
     Gtk::Label apiLabel;

@@ -19,6 +19,9 @@ public:
 
     // Get all available APIs
     std::vector<std::string> getAvailableApis() const;
+    
+    // Get all available API names (same as getAvailableApis, for clarity)
+    std::vector<std::string> getAvailableApiNames() const;
 
     // Set API key for a specific API
     void setApiKey(const std::string& apiName, const std::string& apiKey);

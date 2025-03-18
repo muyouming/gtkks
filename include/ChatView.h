@@ -6,7 +6,7 @@
 #include <vector>
 #include <memory>
 
-class ChatView : public Gtk::Box {
+class ChatView : public Gtk::VBox {
 public:
     ChatView();
     virtual ~ChatView();
@@ -31,8 +31,8 @@ private:
     Gtk::Button sendButton;
     Gtk::Button clearButton;
     Gtk::ProgressBar progressBar;
-    Gtk::Box inputBox;
-    Gtk::Box buttonBox;
+    Gtk::HBox inputBox;
+    Gtk::HBox buttonBox;
 
     // Chat history
     std::vector<Message> messages;

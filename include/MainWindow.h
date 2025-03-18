@@ -11,17 +11,19 @@ public:
     
 private:
     // UI components
-    Gtk::HeaderBar headerBar;
-    Gtk::Box mainBox;
+    Gtk::VBox mainBox;
     
     // Menu
-    Gtk::MenuButton menuButton;
-    Gtk::Popover menuPopover;
-    Gtk::Box menuBox;
-    Gtk::Button settingsButton;
-    Gtk::Button saveButton;
-    Gtk::Button loadButton;
-    Gtk::Button aboutButton;
+    Gtk::MenuBar menuBar;
+    Gtk::Menu fileMenu;
+    Gtk::Menu helpMenu;
+    Gtk::MenuItem fileMenuItem;
+    Gtk::MenuItem helpMenuItem;
+    Gtk::MenuItem settingsMenuItem;
+    Gtk::MenuItem saveMenuItem;
+    Gtk::MenuItem loadMenuItem;
+    Gtk::MenuItem aboutMenuItem;
+    Gtk::MenuItem quitMenuItem;
     
     // Dialogs
     Gtk::Dialog settingsDialog;
@@ -32,7 +34,6 @@ private:
     ChatView chatView;
     
     // Signal handlers
-    void onMenuButtonClicked();
     void onSettingsClicked();
     void onSaveClicked();
     void onLoadClicked();
