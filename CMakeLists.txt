@@ -5,6 +5,16 @@ project(gtkks VERSION 1.0.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Enable static linking
+if(NOT APPLE)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
+else()
+    # macOS doesn't support fully static linking
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-search_paths_first")
+endif()
+
+set(BUILD_SHARED_LIBS OFF)
+
 # Set compiler flags for macOS
 if(APPLE)
     # Use clang++ explicitly on macOS
@@ -19,11 +29,11 @@ if(APPLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
 endif()
 
-# Find required packages
+# Find required packages with static preference
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(GTKMM REQUIRED gtkmm-3.0)
-pkg_check_modules(CURLPP REQUIRED curlpp)
-pkg_check_modules(JSONCPP REQUIRED jsoncpp)
+pkg_check_modules(GTKMM REQUIRED IMPORTED_TARGET gtkmm-3.0)
+pkg_check_modules(CURLPP REQUIRED IMPORTED_TARGET curlpp)
+pkg_check_modules(JSONCPP REQUIRED IMPORTED_TARGET jsoncpp)
 
 # Include directories
 include_directories(
@@ -66,12 +76,24 @@ set(SOURCES
 # Add executable
 add_executable(gtkks ${SOURCES})
 
-# Link libraries
-target_link_libraries(gtkks
-    ${GTKMM_LIBRARIES}
-    ${CURLPP_LIBRARIES}
-    ${JSONCPP_LIBRARIES}
-)
+# Link libraries - different for macOS and Linux
+if(APPLE)
+    # macOS uses dynamic linking with library bundling
+    target_link_libraries(gtkks
+        ${GTKMM_LIBRARIES}
+        ${CURLPP_LIBRARIES}
+        ${JSONCPP_LIBRARIES}
+    )
+else()
+    # Linux can use more static linking
+    target_link_libraries(gtkks
+        -Wl,-Bstatic
+        ${GTKMM_STATIC_LIBRARIES}
+        ${CURLPP_STATIC_LIBRARIES}
+        ${JSONCPP_STATIC_LIBRARIES}
+        -Wl,-Bdynamic
+    )
+endif()
 
 # Install target
 install(TARGETS gtkks DESTINATION bin)
@@ -80,6 +102,7 @@ install(TARGETS gtkks DESTINATION bin)
 message(STATUS "C++ Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "GTKMM include dirs: ${GTKMM_INCLUDE_DIRS}")
 message(STATUS "GTKMM libraries: ${GTKMM_LIBRARIES}")
+message(STATUS "GTKMM static libraries: ${GTKMM_STATIC_LIBRARIES}")
 message(STATUS "CURLPP include dirs: ${CURLPP_INCLUDE_DIRS}")
 message(STATUS "CURLPP libraries: ${CURLPP_LIBRARIES}")
 message(STATUS "JSONCPP include dirs: ${JSONCPP_INCLUDE_DIRS}")
